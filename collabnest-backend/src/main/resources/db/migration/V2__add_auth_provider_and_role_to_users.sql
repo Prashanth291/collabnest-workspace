@@ -1,0 +1,3 @@
+ALTER TABLE users
+    ADD COLUMN auth_provider VARCHAR(50),
+ADD COLUMN role VARCHAR(50);
