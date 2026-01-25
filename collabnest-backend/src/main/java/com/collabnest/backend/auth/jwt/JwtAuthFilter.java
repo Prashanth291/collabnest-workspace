@@ -1,10 +1,12 @@
 package com.collabnest.backend.auth.jwt;
 
 import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -24,26 +26,42 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
                                     FilterChain filterChain)
-            throws IOException, jakarta.servlet.ServletException {
+            throws ServletException, IOException {
 
         String authHeader = request.getHeader("Authorization");
 
-        if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            String token = authHeader.substring(7);
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
 
-            if (jwtService.isTokenValid(token)) {
+        String token = authHeader.substring(7);
 
-                String subject = jwtService.extractSubject(token);
+        if (!jwtService.isTokenValid(token)) {
+            filterChain.doFilter(request, response);
+            return;
+        }
 
-                UsernamePasswordAuthenticationToken authentication =
-                        new UsernamePasswordAuthenticationToken(
-                                subject,
-                                null,
-                                List.of()
-                        );
+        String subject = jwtService.extractSubject(token);
+        String role = jwtService.extractRole(token);
 
-                SecurityContextHolder.getContext().setAuthentication(authentication);
-            }
+        // Prevent re-authentication
+        if (SecurityContextHolder.getContext().getAuthentication() == null) {
+
+            UsernamePasswordAuthenticationToken authentication =
+                    new UsernamePasswordAuthenticationToken(
+                            subject,
+                            null,
+                            List.of(() -> "ROLE_" + role)
+                    );
+
+            authentication.setDetails(
+                    new WebAuthenticationDetailsSource()
+                            .buildDetails(request)
+            );
+
+            SecurityContextHolder.getContext()
+                    .setAuthentication(authentication);
         }
 
         filterChain.doFilter(request, response);

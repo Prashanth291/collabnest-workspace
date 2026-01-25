@@ -22,4 +22,10 @@ public class AuthController {
     public AuthResponse login(@RequestBody LoginRequest request) {
         return authService.login(request);
     }
+
+    @PostMapping("/register-admin")
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN')")
+    public AuthResponse registerAdmin(@RequestBody RegisterRequest request) {
+        return authService.registerAdmin(request);
+    }
 }

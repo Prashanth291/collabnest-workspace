@@ -64,5 +64,26 @@ public class AuthService {
 
         return new AuthResponse(token);
     }
+
+    public AuthResponse registerAdmin(RegisterRequest request) {
+        User user = new User();
+        user.setEmail(request.email());
+        user.setUsername(request.username());
+        user.setName(request.name());
+        user.setPasswordHash(passwordEncoder.encode(request.password()));
+        user.setAuthProvider(AuthProvider.LOCAL);
+        user.setRole(UserRole.ADMIN);  // Set as ADMIN
+        user.setEnabled(true);
+
+        userRepository.save(user);
+
+        Map<String, Object> extraClaims = new HashMap<>();
+        extraClaims.put("userId", user.getId().toString());
+        extraClaims.put("role", user.getRole().name());
+        
+        String token = jwtService.generateToken(user.getEmail(), extraClaims);
+
+        return new AuthResponse(token);
+    }
 }
 
