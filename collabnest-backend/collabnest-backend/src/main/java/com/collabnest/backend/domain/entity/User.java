@@ -15,7 +15,6 @@ import java.util.UUID;
 @Getter @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 public class User {
 
     @Id
@@ -23,6 +22,7 @@ public class User {
     @UuidGenerator
     @Column(columnDefinition = "uuid", updatable = false, nullable = false)
     private UUID id;
+
 
     @Column(nullable = false, unique = true)
     private String email;
@@ -33,20 +33,19 @@ public class User {
     @Column(nullable = false)
     private String name;
 
+
     @Column(name = "password_hash")
     private String passwordHash;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "auth_provider")
     private AuthProvider authProvider;
 
     @Enumerated(EnumType.STRING)
     private UserRole role;
 
     @Column(nullable = false)
-    private Boolean enabled = true;
+    private boolean enabled = true;
 
     @CreationTimestamp
-    @Column(name = "created_at")
     private Instant createdAt;
 }

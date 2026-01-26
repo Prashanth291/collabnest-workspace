@@ -1,7 +1,5 @@
 package com.collabnest.backend.auth.jwt;
 
-import com.collabnest.backend.security.CustomUserDetailsService;
-import com.collabnest.backend.security.UserPrincipal;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -13,16 +11,15 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.List;
 
 @Component
 public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
-    private final CustomUserDetailsService userDetailsService;
 
-    public JwtAuthFilter(JwtService jwtService, CustomUserDetailsService userDetailsService) {
+    public JwtAuthFilter(JwtService jwtService) {
         this.jwtService = jwtService;
-        this.userDetailsService = userDetailsService;
     }
 
     @Override
@@ -46,18 +43,16 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         }
 
         String subject = jwtService.extractSubject(token);
+        String role = jwtService.extractRole(token);
 
         // Prevent re-authentication
         if (SecurityContextHolder.getContext().getAuthentication() == null) {
 
-            // Load full UserPrincipal for workspace permission checks
-            UserPrincipal userPrincipal = (UserPrincipal) userDetailsService.loadUserByUsername(subject);
-
             UsernamePasswordAuthenticationToken authentication =
                     new UsernamePasswordAuthenticationToken(
-                            userPrincipal,
+                            subject,
                             null,
-                            userPrincipal.getAuthorities()
+                            List.of(() -> "ROLE_" + role)
                     );
 
             authentication.setDetails(

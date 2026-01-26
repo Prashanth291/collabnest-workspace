@@ -43,10 +43,6 @@ public class JwtService {
         return extractClaim(token, claims -> claims.get("role", String.class));
     }
 
-    public String extractUserId(String token) {
-        return extractClaim(token, claims -> claims.get("userId", String.class));
-    }
-
     public boolean isTokenValid(String token) {
         return !isTokenExpired(token);
     }
