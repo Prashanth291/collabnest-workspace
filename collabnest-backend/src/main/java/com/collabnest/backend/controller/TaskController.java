@@ -2,27 +2,27 @@ package com.collabnest.backend.controller;
 
 import com.collabnest.backend.domain.entity.BoardColumn;
 import com.collabnest.backend.domain.entity.Task;
-import com.collabnest.backend.domain.enums.TaskPriority;
+import com.collabnest.backend.dto.task.CreateTaskRequest;
+import com.collabnest.backend.dto.task.MoveTaskRequest;
+import com.collabnest.backend.dto.task.TaskResponse;
 import com.collabnest.backend.repository.BoardColumnRepository;
+import com.collabnest.backend.security.UserPrincipal;
 import com.collabnest.backend.service.TaskService;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
 /**
  * Task controller with workspace-aware authorization.
- * 
- * Authorization strategy:
- * - Tasks belong to board columns, which belong to boards, which belong to workspaces
- * - Access is controlled by workspace membership
- * - We extract the workspaceId from the column/board hierarchy for permission checks
  */
 @RestController
-@RequestMapping("/api/workspaces/{workspaceId}/tasks")
+@RequestMapping("/api/workspaces/{workspaceId}/columns/{columnId}/tasks")
 public class TaskController {
 
     private final TaskService taskService;
@@ -34,234 +34,188 @@ public class TaskController {
     }
 
     /**
-     * Create a new task in a board column.
-     * Requires at least MEMBER role in the workspace.
+     * Create a new task in a column - requires MEMBER role.
      */
     @PostMapping
     @PreAuthorize("hasPermission(#workspaceId, 'Workspace', 'MEMBER')")
-    public ResponseEntity<Task> createTask(
+    public ResponseEntity<TaskResponse> createTask(
             @PathVariable UUID workspaceId,
-            @RequestBody CreateTaskRequest request) {
+            @PathVariable UUID columnId,
+            @Valid @RequestBody CreateTaskRequest request,
+            @AuthenticationPrincipal UserPrincipal userPrincipal) {
         
-        // Verify the column belongs to a board in this workspace
-        BoardColumn column = boardColumnRepository.findById(request.getColumnId())
+        // Verify column belongs to this workspace
+        BoardColumn column = boardColumnRepository.findById(columnId)
                 .orElseThrow(() -> new RuntimeException("Column not found"));
         
         if (!column.getBoard().getWorkspace().getId().equals(workspaceId)) {
             return ResponseEntity.badRequest().build();
         }
         
+        UUID userId = userPrincipal.getUserId();
+        
         Task task = taskService.createTask(
-                request.getColumnId(),
-                request.getTitle(),
-                request.getDescription(),
-                request.getPriority(),
-                request.getDueDate(),
-                request.getAssigneeId()
+                columnId,
+                request.title(),
+                request.description(),
+                request.priority(),
+                request.dueDate(),
+                userId
         );
-        return ResponseEntity.ok(task);
+        
+        TaskResponse response = new TaskResponse(
+                task.getId(),
+                task.getColumn().getId(),
+                task.getTitle(),
+                task.getDescription(),
+                task.getPriority(),
+                task.getDueDate(),
+                task.getPosition(),
+                task.getCreatedBy().getId(),
+                task.getCreatedAt(),
+                task.getUpdatedAt()
+        );
+        
+        return ResponseEntity.ok(response);
     }
 
     /**
-     * Get all tasks in the workspace.
-     * Requires at least VIEWER role.
+     * Get all tasks in a column - requires VIEWER role.
      */
     @GetMapping
     @PreAuthorize("hasPermission(#workspaceId, 'Workspace', 'VIEWER')")
-    public ResponseEntity<List<Task>> getTasks(@PathVariable UUID workspaceId) {
-        List<Task> tasks = taskService.getTasksByWorkspace(workspaceId);
-        return ResponseEntity.ok(tasks);
+    public ResponseEntity<List<TaskResponse>> getColumnTasks(
+            @PathVariable UUID workspaceId,
+            @PathVariable UUID columnId) {
+        
+        List<Task> tasks = taskService.getColumnTasks(columnId);
+        
+        List<TaskResponse> responses = tasks.stream()
+                .map(task -> new TaskResponse(
+                        task.getId(),
+                        task.getColumn().getId(),
+                        task.getTitle(),
+                        task.getDescription(),
+                        task.getPriority(),
+                        task.getDueDate(),
+                        task.getPosition(),
+                        task.getCreatedBy().getId(),
+                        task.getCreatedAt(),
+                        task.getUpdatedAt()
+                ))
+                .toList();
+        
+        return ResponseEntity.ok(responses);
     }
 
     /**
-     * Get a specific task.
-     * Requires at least VIEWER role.
+     * Get a specific task - requires VIEWER role.
      */
     @GetMapping("/{taskId}")
     @PreAuthorize("hasPermission(#workspaceId, 'Workspace', 'VIEWER')")
-    public ResponseEntity<Task> getTask(
+    public ResponseEntity<TaskResponse> getTask(
             @PathVariable UUID workspaceId,
+            @PathVariable UUID columnId,
             @PathVariable UUID taskId) {
         
         Task task = taskService.getTask(taskId);
         
-        // Verify the task belongs to this workspace
-        UUID taskWorkspaceId = task.getColumn().getBoard().getWorkspace().getId();
-        if (!taskWorkspaceId.equals(workspaceId)) {
+        // Verify the task belongs to this workspace and column
+        if (!task.getColumn().getId().equals(columnId)) {
             return ResponseEntity.notFound().build();
         }
         
-        return ResponseEntity.ok(task);
+        TaskResponse response = new TaskResponse(
+                task.getId(),
+                task.getColumn().getId(),
+                task.getTitle(),
+                task.getDescription(),
+                task.getPriority(),
+                task.getDueDate(),
+                task.getPosition(),
+                task.getCreatedBy().getId(),
+                task.getCreatedAt(),
+                task.getUpdatedAt()
+        );
+        
+        return ResponseEntity.ok(response);
     }
 
     /**
-     * Update a task.
-     * Requires at least MEMBER role.
+     * Update a task - requires MEMBER role.
      */
     @PutMapping("/{taskId}")
     @PreAuthorize("hasPermission(#workspaceId, 'Workspace', 'MEMBER')")
-    public ResponseEntity<Task> updateTask(
+    public ResponseEntity<TaskResponse> updateTask(
             @PathVariable UUID workspaceId,
+            @PathVariable UUID columnId,
             @PathVariable UUID taskId,
-            @RequestBody UpdateTaskRequest request) {
+            @Valid @RequestBody CreateTaskRequest request) {
         
-        Task task = taskService.getTask(taskId);
-        
-        // Verify the task belongs to this workspace
-        UUID taskWorkspaceId = task.getColumn().getBoard().getWorkspace().getId();
-        if (!taskWorkspaceId.equals(workspaceId)) {
-            return ResponseEntity.notFound().build();
-        }
-        
-        Task updatedTask = taskService.updateTask(
+        Task task = taskService.updateTask(
                 taskId,
-                request.getTitle(),
-                request.getDescription(),
-                request.getPriority(),
-                request.getDueDate()
+                request.title(),
+                request.description(),
+                request.priority(),
+                request.dueDate()
         );
-        return ResponseEntity.ok(updatedTask);
+        
+        TaskResponse response = new TaskResponse(
+                task.getId(),
+                task.getColumn().getId(),
+                task.getTitle(),
+                task.getDescription(),
+                task.getPriority(),
+                task.getDueDate(),
+                task.getPosition(),
+                task.getCreatedBy().getId(),
+                task.getCreatedAt(),
+                task.getUpdatedAt()
+        );
+        
+        return ResponseEntity.ok(response);
     }
 
     /**
-     * Delete a task.
-     * Requires at least MEMBER role (users can delete tasks they can edit).
+     * Move a task to a different column/position - requires MEMBER role.
+     */
+    @PutMapping("/{taskId}/move")
+    @PreAuthorize("hasPermission(#workspaceId, 'Workspace', 'MEMBER')")
+    public ResponseEntity<TaskResponse> moveTask(
+            @PathVariable UUID workspaceId,
+            @PathVariable UUID columnId,
+            @PathVariable UUID taskId,
+            @Valid @RequestBody MoveTaskRequest request) {
+        
+        Task task = taskService.moveTask(taskId, request.targetColumnId(), request.position());
+        
+        TaskResponse response = new TaskResponse(
+                task.getId(),
+                task.getColumn().getId(),
+                task.getTitle(),
+                task.getDescription(),
+                task.getPriority(),
+                task.getDueDate(),
+                task.getPosition(),
+                task.getCreatedBy().getId(),
+                task.getCreatedAt(),
+                task.getUpdatedAt()
+        );
+        
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Delete a task - requires MEMBER role.
      */
     @DeleteMapping("/{taskId}")
     @PreAuthorize("hasPermission(#workspaceId, 'Workspace', 'MEMBER')")
     public ResponseEntity<Void> deleteTask(
             @PathVariable UUID workspaceId,
+            @PathVariable UUID columnId,
             @PathVariable UUID taskId) {
-        
-        Task task = taskService.getTask(taskId);
-        
-        // Verify the task belongs to this workspace
-        UUID taskWorkspaceId = task.getColumn().getBoard().getWorkspace().getId();
-        if (!taskWorkspaceId.equals(workspaceId)) {
-            return ResponseEntity.notFound().build();
-        }
         
         taskService.deleteTask(taskId);
         return ResponseEntity.noContent().build();
-    }
-
-    /**
-     * Assign a task to a user.
-     * Requires at least MEMBER role.
-     */
-    @PutMapping("/{taskId}/assign/{userId}")
-    @PreAuthorize("hasPermission(#workspaceId, 'Workspace', 'MEMBER')")
-    public ResponseEntity<Task> assignTask(
-            @PathVariable UUID workspaceId,
-            @PathVariable UUID taskId,
-            @PathVariable UUID userId) {
-        
-        Task task = taskService.getTask(taskId);
-        
-        // Verify the task belongs to this workspace
-        UUID taskWorkspaceId = task.getColumn().getBoard().getWorkspace().getId();
-        if (!taskWorkspaceId.equals(workspaceId)) {
-            return ResponseEntity.notFound().build();
-        }
-        
-        Task updatedTask = taskService.assignTask(taskId, userId);
-        return ResponseEntity.ok(updatedTask);
-    }
-
-    // DTOs
-    public static class CreateTaskRequest {
-        private UUID columnId;
-        private String title;
-        private String description;
-        private TaskPriority priority;
-        private LocalDate dueDate;
-        private UUID assigneeId;
-
-        public UUID getColumnId() {
-            return columnId;
-        }
-
-        public void setColumnId(UUID columnId) {
-            this.columnId = columnId;
-        }
-
-        public String getTitle() {
-            return title;
-        }
-
-        public void setTitle(String title) {
-            this.title = title;
-        }
-
-        public String getDescription() {
-            return description;
-        }
-
-        public void setDescription(String description) {
-            this.description = description;
-        }
-
-        public TaskPriority getPriority() {
-            return priority;
-        }
-
-        public void setPriority(TaskPriority priority) {
-            this.priority = priority;
-        }
-
-        public LocalDate getDueDate() {
-            return dueDate;
-        }
-
-        public void setDueDate(LocalDate dueDate) {
-            this.dueDate = dueDate;
-        }
-
-        public UUID getAssigneeId() {
-            return assigneeId;
-        }
-
-        public void setAssigneeId(UUID assigneeId) {
-            this.assigneeId = assigneeId;
-        }
-    }
-
-    public static class UpdateTaskRequest {
-        private String title;
-        private String description;
-        private TaskPriority priority;
-        private LocalDate dueDate;
-
-        public String getTitle() {
-            return title;
-        }
-
-        public void setTitle(String title) {
-            this.title = title;
-        }
-
-        public String getDescription() {
-            return description;
-        }
-
-        public void setDescription(String description) {
-            this.description = description;
-        }
-
-        public TaskPriority getPriority() {
-            return priority;
-        }
-
-        public void setPriority(TaskPriority priority) {
-            this.priority = priority;
-        }
-
-        public LocalDate getDueDate() {
-            return dueDate;
-        }
-
-        public void setDueDate(LocalDate dueDate) {
-            this.dueDate = dueDate;
-        }
     }
 }

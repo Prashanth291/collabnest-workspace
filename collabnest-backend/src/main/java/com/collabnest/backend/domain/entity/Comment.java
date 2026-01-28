@@ -8,25 +8,30 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "workspaces")
-@Getter @Setter
+@Table(name = "comments")
+@Getter
+@Setter
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
-public class Workspace {
+public class Comment {
 
     @Id
     @UuidGenerator
     private UUID id;
 
-    @Column(nullable = false)
-    private String name;
+    @Column(name = "entity_id", nullable = false)
+    private UUID entityId;
 
-    @Column(name = "owner_id", nullable = false)
-    private UUID ownerId;
+    @Column(name = "entity_type", nullable = false, length = 50)
+    private String entityType;  // "document" or "task"
 
-    @Column(name = "invite_token", unique = true)
-    private String inviteToken;
+    @Column(columnDefinition = "TEXT")
+    private String content;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "created_by_id", nullable = false)
+    private User createdBy;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;

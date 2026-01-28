@@ -18,6 +18,10 @@ public interface WorkspaceService {
 
     void deleteWorkspace(UUID workspaceId);
     
+    String inviteMember(UUID workspaceId, String email, WorkspaceRole role, UUID inviterId);
+    
+    void joinWorkspace(String inviteToken, UUID userId);
+    
     void addMember(UUID workspaceId, UUID userId, WorkspaceRole role);
     
     void removeMember(UUID workspaceId, UUID userId);

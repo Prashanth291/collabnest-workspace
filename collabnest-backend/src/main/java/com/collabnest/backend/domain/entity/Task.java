@@ -16,6 +16,7 @@ import java.util.UUID;
 @Getter @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class Task {
 
     @Id
@@ -42,6 +43,10 @@ public class Task {
 
     @Column(nullable = false)
     private Integer position = 0;
+
+    @ManyToOne
+    @JoinColumn(name = "assignee_id")
+    private User assignee;
 
     @ManyToOne
     @JoinColumn(name = "created_by")
