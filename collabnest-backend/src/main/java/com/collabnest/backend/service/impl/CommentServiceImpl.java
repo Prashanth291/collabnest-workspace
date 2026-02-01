@@ -1,14 +1,20 @@
 package com.collabnest.backend.service.impl;
 
+import com.collabnest.backend.activity.ActivityLogService;
 import com.collabnest.backend.domain.entity.Comment;
 import com.collabnest.backend.domain.entity.User;
+import com.collabnest.backend.domain.enums.ActivityType;
+import com.collabnest.backend.notification.NotificationService;
 import com.collabnest.backend.repository.CommentRepository;
 import com.collabnest.backend.repository.UserRepository;
 import com.collabnest.backend.service.CommentService;
+import com.collabnest.backend.websocket.dto.DocumentEvent;
 import lombok.RequiredArgsConstructor;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -18,6 +24,9 @@ public class CommentServiceImpl implements CommentService {
 
     private final CommentRepository commentRepository;
     private final UserRepository userRepository;
+    private final SimpMessagingTemplate messagingTemplate;
+    private final ActivityLogService activityLogService;
+    private final NotificationService notificationService;
 
     @Override
     @Transactional
@@ -32,7 +41,48 @@ public class CommentServiceImpl implements CommentService {
                 .createdBy(createdBy)
                 .build();
         
-        return commentRepository.save(comment);
+        Comment savedComment = commentRepository.save(comment);
+        
+        // Detect and process mentions
+        List<UUID> mentionedUsers = notificationService.detectMentions(content);
+        if (!mentionedUsers.isEmpty() && "DOCUMENT".equals(entityType)) {
+            notificationService.createMentionNotifications(
+                    mentionedUsers,
+                    createdById,
+                    null, // workspaceId - would need to fetch from document
+                    entityType,
+                    entityId,
+                    "comment"
+            );
+        }
+        
+        // Broadcast comment creation event - assuming comments are on documents
+        if ("DOCUMENT".equals(entityType)) {
+            DocumentEvent event = DocumentEvent.builder()
+                    .type(DocumentEvent.EventType.COMMENT_ADDED)
+                    .documentId(entityId)
+                    .workspaceId(null) // Would need to fetch document to get workspace
+                    .userId(createdById)
+                    .userName(createdBy.getUsername())
+                    .payload(savedComment)
+                    .timestamp(LocalDateTime.now())
+                    .build();
+            
+            messagingTemplate.convertAndSend("/topic/document/" + entityId, event);
+            
+            // Log activity
+            activityLogService.logActivity(
+                    null, // workspaceId
+                    createdById,
+                    ActivityType.COMMENT_ADDED,
+                    entityType,
+                    entityId,
+                    "comment",
+                    String.format("Added a comment")
+            );
+        }
+        
+        return savedComment;
     }
 
     @Override
@@ -50,6 +100,26 @@ public class CommentServiceImpl implements CommentService {
     @Transactional
     public void deleteComment(UUID commentId) {
         Comment comment = getComment(commentId);
+        UUID entityId = comment.getEntityId();
+        String entityType = comment.getEntityType();
+        UUID userId = comment.getCreatedBy().getId();
+        String userName = comment.getCreatedBy().getUsername();
+        
         commentRepository.delete(comment);
+        
+        // Broadcast comment deletion event
+        if ("DOCUMENT".equals(entityType)) {
+            DocumentEvent event = DocumentEvent.builder()
+                    .type(DocumentEvent.EventType.COMMENT_DELETED)
+                    .documentId(entityId)
+                    .workspaceId(null)
+                    .userId(userId)
+                    .userName(userName)
+                    .payload(null)
+                    .timestamp(LocalDateTime.now())
+                    .build();
+            
+            messagingTemplate.convertAndSend("/topic/document/" + entityId, event);
+        }
     }
 }

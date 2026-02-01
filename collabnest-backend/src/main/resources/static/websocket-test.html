@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CollabNest WebSocket Test Client</title>
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+        }
+        h2 {
+            color: #555;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+        }
+        input, button {
+            padding: 10px;
+            margin: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .disconnect {
+            background-color: #dc3545;
+        }
+        .disconnect:hover {
+            background-color: #c82333;
+        }
+        #events {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+            height: 400px;
+            overflow-y: auto;
+            background-color: #f8f9fa;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+        .event {
+            margin: 5px 0;
+            padding: 8px;
+            border-radius: 4px;
+            border-left: 4px solid #007bff;
+            background-color: white;
+        }
+        .event-task {
+            border-left-color: #28a745;
+        }
+        .event-document {
+            border-left-color: #ffc107;
+        }
+        .event-presence {
+            border-left-color: #17a2b8;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+        .status-connected {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .status-disconnected {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .input-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .input-group input {
+            flex: 1;
+            min-width: 200px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🌐 CollabNest WebSocket Test Client</h1>
+    
+    <div class="container">
+        <h2>Connection</h2>
+        <div id="status" class="status status-disconnected">Disconnected</div>
+        <div class="input-group">
+            <input type="text" id="jwtToken" placeholder="JWT Token (paste your token here)" style="flex: 3;">
+            <button id="connectBtn" onclick="connect()">Connect</button>
+            <button id="disconnectBtn" class="disconnect" onclick="disconnect()" disabled>Disconnect</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>Subscriptions</h2>
+        <div class="input-group">
+            <input type="text" id="workspaceId" placeholder="Workspace ID (UUID)">
+            <button onclick="subscribeWorkspace()">Subscribe to Workspace</button>
+        </div>
+        <div class="input-group">
+            <input type="text" id="boardId" placeholder="Board ID (UUID)">
+            <button onclick="subscribeBoard()">Subscribe to Board</button>
+        </div>
+        <div class="input-group">
+            <input type="text" id="documentId" placeholder="Document ID (UUID)">
+            <button onclick="subscribeDocument()">Subscribe to Document</button>
+        </div>
+        <div class="input-group">
+            <button onclick="subscribePresence()">Subscribe to Presence</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>Events Log</h2>
+        <button onclick="clearEvents()">Clear Log</button>
+        <div id="events"></div>
+    </div>
+
+    <script>
+        let stompClient = null;
+        let subscriptions = [];
+
+        function setConnected(connected) {
+            document.getElementById('connectBtn').disabled = connected;
+            document.getElementById('disconnectBtn').disabled = !connected;
+            const status = document.getElementById('status');
+            if (connected) {
+                status.textContent = 'Connected ✓';
+                status.className = 'status status-connected';
+            } else {
+                status.textContent = 'Disconnected ✗';
+                status.className = 'status status-disconnected';
+            }
+        }
+
+        function connect() {
+            const token = document.getElementById('jwtToken').value;
+            if (!token) {
+                alert('Please enter a JWT token');
+                return;
+            }
+
+            const socket = new SockJS('http://localhost:8080/ws');
+            stompClient = Stomp.over(socket);
+
+            stompClient.connect(
+                { 'Authorization': 'Bearer ' + token },
+                function (frame) {
+                    setConnected(true);
+                    addEvent('SYSTEM', 'Connected to WebSocket server', 'info');
+                    console.log('Connected: ' + frame);
+                },
+                function (error) {
+                    setConnected(false);
+                    addEvent('ERROR', 'Connection failed: ' + error, 'error');
+                    console.error('Error:', error);
+                }
+            );
+        }
+
+        function disconnect() {
+            if (stompClient !== null) {
+                stompClient.disconnect();
+            }
+            setConnected(false);
+            subscriptions = [];
+            addEvent('SYSTEM', 'Disconnected from WebSocket server', 'info');
+        }
+
+        function subscribeWorkspace() {
+            const workspaceId = document.getElementById('workspaceId').value;
+            if (!workspaceId) {
+                alert('Please enter a workspace ID');
+                return;
+            }
+
+            const subscription = stompClient.subscribe('/topic/workspace/' + workspaceId, function (message) {
+                const event = JSON.parse(message.body);
+                addEvent('WORKSPACE', JSON.stringify(event, null, 2), 'document');
+            });
+            subscriptions.push(subscription);
+            addEvent('SUBSCRIPTION', 'Subscribed to workspace: ' + workspaceId, 'info');
+        }
+
+        function subscribeBoard() {
+            const boardId = document.getElementById('boardId').value;
+            if (!boardId) {
+                alert('Please enter a board ID');
+                return;
+            }
+
+            const subscription = stompClient.subscribe('/topic/board/' + boardId, function (message) {
+                const event = JSON.parse(message.body);
+                addEvent('BOARD', JSON.stringify(event, null, 2), 'task');
+            });
+            subscriptions.push(subscription);
+            addEvent('SUBSCRIPTION', 'Subscribed to board: ' + boardId, 'info');
+        }
+
+        function subscribeDocument() {
+            const documentId = document.getElementById('documentId').value;
+            if (!documentId) {
+                alert('Please enter a document ID');
+                return;
+            }
+
+            const subscription = stompClient.subscribe('/topic/document/' + documentId, function (message) {
+                const event = JSON.parse(message.body);
+                addEvent('DOCUMENT', JSON.stringify(event, null, 2), 'document');
+            });
+            subscriptions.push(subscription);
+            addEvent('SUBSCRIPTION', 'Subscribed to document: ' + documentId, 'info');
+        }
+
+        function subscribePresence() {
+            const subscription = stompClient.subscribe('/topic/presence', function (message) {
+                const event = JSON.parse(message.body);
+                addEvent('PRESENCE', JSON.stringify(event, null, 2), 'presence');
+            });
+            subscriptions.push(subscription);
+            addEvent('SUBSCRIPTION', 'Subscribed to presence events', 'info');
+        }
+
+        function addEvent(type, message, category) {
+            const eventsDiv = document.getElementById('events');
+            const eventDiv = document.createElement('div');
+            eventDiv.className = 'event event-' + category;
+            
+            const timestamp = new Date().toLocaleTimeString();
+            eventDiv.innerHTML = '<strong>[' + timestamp + '] ' + type + ':</strong><br>' + message;
+            
+            eventsDiv.appendChild(eventDiv);
+            eventsDiv.scrollTop = eventsDiv.scrollHeight;
+        }
+
+        function clearEvents() {
+            document.getElementById('events').innerHTML = '';
+        }
+
+        // Add initial message
+        addEvent('SYSTEM', 'WebSocket test client ready. Enter your JWT token and click Connect.', 'info');
+    </script>
+</body>
+</html>

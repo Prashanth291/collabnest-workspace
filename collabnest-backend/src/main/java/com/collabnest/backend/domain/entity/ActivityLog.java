@@ -1,43 +1,60 @@
 package com.collabnest.backend.domain.entity;
 
+import com.collabnest.backend.domain.enums.ActivityType;
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UuidGenerator;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
-import java.time.Instant;
+import java.time.LocalDateTime;
+import java.util.Map;
 import java.util.UUID;
 
 @Entity
 @Table(name = "activity_logs")
-@Getter @Setter
+@Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class ActivityLog {
 
     @Id
-    @GeneratedValue
-    @UuidGenerator
-    @Column(columnDefinition = "uuid", updatable = false, nullable = false)
+    @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @ManyToOne
-    @JoinColumn(name = "workspace_id")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "workspace_id", nullable = false)
     private Workspace workspace;
 
-    @ManyToOne
-    @JoinColumn(name = "actor_id")
-    private User actor;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
 
-    @Column(length = 50)
+    @Enumerated(EnumType.STRING)
+    @Column(name = "activity_type", nullable = false, length = 50)
+    private ActivityType activityType;
+
+    @Column(name = "entity_type", nullable = false, length = 50)
     private String entityType;
 
-    @Column(columnDefinition = "uuid")
+    @Column(name = "entity_id", nullable = false)
     private UUID entityId;
 
-    private String action;
+    @Column(name = "entity_name")
+    private String entityName;
 
-    @CreationTimestamp
-    @Column(name = "created_at")
-    private Instant createdAt;
+    @Column(name = "description", columnDefinition = "TEXT")
+    private String description;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "metadata", columnDefinition = "jsonb")
+    private Map<String, Object> metadata;
+
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+    }
 }
