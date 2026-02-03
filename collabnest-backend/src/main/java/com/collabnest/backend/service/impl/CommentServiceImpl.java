@@ -43,42 +43,16 @@ public class CommentServiceImpl implements CommentService {
         
         Comment savedComment = commentRepository.save(comment);
         
-        // Detect and process mentions
+        // Process mentions asynchronously after save
         List<UUID> mentionedUsers = notificationService.detectMentions(content);
-        if (!mentionedUsers.isEmpty() && "DOCUMENT".equals(entityType)) {
+        if (!mentionedUsers.isEmpty() && "document".equalsIgnoreCase(entityType)) {
             notificationService.createMentionNotifications(
                     mentionedUsers,
                     createdById,
-                    null, // workspaceId - would need to fetch from document
+                    null,
                     entityType,
                     entityId,
                     "comment"
-            );
-        }
-        
-        // Broadcast comment creation event - assuming comments are on documents
-        if ("DOCUMENT".equals(entityType)) {
-            DocumentEvent event = DocumentEvent.builder()
-                    .type(DocumentEvent.EventType.COMMENT_ADDED)
-                    .documentId(entityId)
-                    .workspaceId(null) // Would need to fetch document to get workspace
-                    .userId(createdById)
-                    .userName(createdBy.getUsername())
-                    .payload(savedComment)
-                    .timestamp(LocalDateTime.now())
-                    .build();
-            
-            messagingTemplate.convertAndSend("/topic/document/" + entityId, event);
-            
-            // Log activity
-            activityLogService.logActivity(
-                    null, // workspaceId
-                    createdById,
-                    ActivityType.COMMENT_ADDED,
-                    entityType,
-                    entityId,
-                    "comment",
-                    String.format("Added a comment")
             );
         }
         

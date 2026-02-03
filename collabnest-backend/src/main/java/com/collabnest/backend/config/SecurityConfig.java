@@ -1,6 +1,9 @@
 package com.collabnest.backend.config;
 
 import com.collabnest.backend.auth.jwt.JwtAuthFilter;
+import com.collabnest.backend.auth.oauth2.CustomOAuth2UserService;
+import com.collabnest.backend.auth.oauth2.OAuth2AuthenticationFailureHandler;
+import com.collabnest.backend.auth.oauth2.OAuth2AuthenticationSuccessHandler;
 import com.collabnest.backend.security.WorkspacePermissionEvaluator;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -16,7 +19,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 
 
 /**
- * Spring Security Configuration - STEP 5 COMPLETE ✅
+ * Spring Security Configuration - STEP 5 COMPLETE ✅ + OAuth2 Integration
  * 
  * This configuration implements comprehensive security with workspace-aware authorization:
  * 
@@ -47,6 +50,12 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
  *   - @PreAuthorize for workspace checks: hasPermission(#workspaceId, 'Workspace', 'ADMIN')
  *   - Custom MethodSecurityExpressionHandler with WorkspacePermissionEvaluator
  * 
+ * 🔑 5.6 OAuth2 Integration:
+ *   - Google and GitHub OAuth2 login
+ *   - CustomOAuth2UserService for user registration/login
+ *   - OAuth2AuthenticationSuccessHandler generates JWT token
+ *   - OAuth2AuthenticationFailureHandler handles failures
+ * 
  * Usage Examples:
  *   - @PreAuthorize("hasRole('ADMIN')") - Global admin only
  *   - @PreAuthorize("isAuthenticated()") - Any authenticated user
@@ -60,11 +69,20 @@ public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
     private final WorkspacePermissionEvaluator permissionEvaluator;
+    private final CustomOAuth2UserService customOAuth2UserService;
+    private final OAuth2AuthenticationSuccessHandler oAuth2AuthenticationSuccessHandler;
+    private final OAuth2AuthenticationFailureHandler oAuth2AuthenticationFailureHandler;
 
     public SecurityConfig(JwtAuthFilter jwtAuthFilter, 
-                         WorkspacePermissionEvaluator permissionEvaluator) {
+                         WorkspacePermissionEvaluator permissionEvaluator,
+                         CustomOAuth2UserService customOAuth2UserService,
+                         OAuth2AuthenticationSuccessHandler oAuth2AuthenticationSuccessHandler,
+                         OAuth2AuthenticationFailureHandler oAuth2AuthenticationFailureHandler) {
         this.jwtAuthFilter = jwtAuthFilter;
         this.permissionEvaluator = permissionEvaluator;
+        this.customOAuth2UserService = customOAuth2UserService;
+        this.oAuth2AuthenticationSuccessHandler = oAuth2AuthenticationSuccessHandler;
+        this.oAuth2AuthenticationFailureHandler = oAuth2AuthenticationFailureHandler;
     }
 
     @Bean
@@ -72,22 +90,26 @@ public class SecurityConfig {
 
         return http
                 .csrf(csrf -> csrf.disable())
-                .sessionManagement(session ->
-                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-                )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/api/auth/**",
                                 "/auth/**",
                                 "/hello",
                                 "/error",
-                                "/ws/**"
+                                "/ws/**",
+                                "/oauth2/**",
+                                "/login/**"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )
+                .oauth2Login(oauth2 -> oauth2
+                        .userInfoEndpoint(userInfo -> userInfo
+                                .userService(customOAuth2UserService)
+                        )
+                        .successHandler(oAuth2AuthenticationSuccessHandler)
+                        .failureHandler(oAuth2AuthenticationFailureHandler)
+                )
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
-                .httpBasic(Customizer.withDefaults())
-                .formLogin(form -> form.disable())
 
                 .build();
     }

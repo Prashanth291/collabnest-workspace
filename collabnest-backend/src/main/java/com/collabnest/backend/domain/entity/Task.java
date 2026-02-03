@@ -49,7 +49,7 @@ public class Task {
     private User assignee;
 
     @ManyToOne
-    @JoinColumn(name = "created_by")
+    @JoinColumn(name = "created_by_id")
     private User createdBy;
 
     @CreationTimestamp

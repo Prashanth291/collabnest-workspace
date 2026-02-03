@@ -40,6 +40,9 @@ public class User {
     @Column(name = "auth_provider")
     private AuthProvider authProvider;
 
+    @Column(name = "provider_id")
+    private String providerId;
+
     @Enumerated(EnumType.STRING)
     private UserRole role;
 

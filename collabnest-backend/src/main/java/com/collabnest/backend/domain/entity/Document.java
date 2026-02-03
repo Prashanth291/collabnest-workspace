@@ -35,7 +35,7 @@ public class Document {
     private String content;
 
     @ManyToOne
-    @JoinColumn(name = "created_by")
+    @JoinColumn(name = "created_by_id")
     private User createdBy;
 
     @CreationTimestamp

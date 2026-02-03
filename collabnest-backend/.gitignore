@@ -5,6 +5,7 @@ target/
 !**/src/test/**/target/
 
 ### Documentation ###
+# Exclude all .md files except README.md
 *.md
 !README.md
 
@@ -60,6 +61,7 @@ Thumbs.db
 application-local.properties
 application-dev.properties
 *.env
+.env.example
 .env.local
 .env.development
 .env.production

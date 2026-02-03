@@ -7,7 +7,7 @@ import org.hibernate.annotations.UuidGenerator;
 import java.util.UUID;
 
 @Entity
-@Table(name = "columns")
+@Table(name = "board_columns")
 @Getter @Setter
 @NoArgsConstructor
 @AllArgsConstructor
