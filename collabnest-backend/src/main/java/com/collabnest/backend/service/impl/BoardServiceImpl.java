@@ -2,6 +2,7 @@ package com.collabnest.backend.service.impl;
 
 import com.collabnest.backend.domain.entity.Board;
 import com.collabnest.backend.domain.entity.Workspace;
+import com.collabnest.backend.exception.ResourceNotFoundException;
 import com.collabnest.backend.repository.BoardRepository;
 import com.collabnest.backend.repository.WorkspaceRepository;
 import com.collabnest.backend.service.BoardService;
@@ -23,7 +24,7 @@ public class BoardServiceImpl implements BoardService {
     @Transactional
     public Board createBoard(UUID workspaceId, String name, Integer position) {
         Workspace workspace = workspaceRepository.findById(workspaceId)
-                .orElseThrow(() -> new RuntimeException("Workspace not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Workspace not found"));
         
         Board board = Board.builder()
                 .workspace(workspace)
@@ -37,7 +38,7 @@ public class BoardServiceImpl implements BoardService {
     @Override
     public Board getBoard(UUID boardId) {
         return boardRepository.findById(boardId)
-                .orElseThrow(() -> new RuntimeException("Board not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Board not found"));
     }
 
     @Override

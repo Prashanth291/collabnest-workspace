@@ -4,6 +4,9 @@ import com.collabnest.backend.domain.entity.User;
 import com.collabnest.backend.domain.entity.Workspace;
 import com.collabnest.backend.domain.entity.WorkspaceMember;
 import com.collabnest.backend.domain.enums.WorkspaceRole;
+import com.collabnest.backend.exception.DuplicateResourceException;
+import com.collabnest.backend.exception.InvalidOperationException;
+import com.collabnest.backend.exception.ResourceNotFoundException;
 import com.collabnest.backend.repository.UserRepository;
 import com.collabnest.backend.repository.WorkspaceMemberRepository;
 import com.collabnest.backend.repository.WorkspaceRepository;
@@ -27,7 +30,7 @@ public class WorkspaceServiceImpl implements WorkspaceService {
     @Transactional
     public Workspace createWorkspace(String name, UUID ownerId) {
         User owner = userRepository.findById(ownerId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         
         // Create workspace
         Workspace workspace = Workspace.builder()
@@ -54,7 +57,7 @@ public class WorkspaceServiceImpl implements WorkspaceService {
     @Override
     public Workspace getWorkspace(UUID workspaceId) {
         return workspaceRepository.findById(workspaceId)
-                .orElseThrow(() -> new RuntimeException("Workspace not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Workspace not found"));
     }
 
     @Override
@@ -79,10 +82,7 @@ public class WorkspaceServiceImpl implements WorkspaceService {
     public void deleteWorkspace(UUID workspaceId) {
         Workspace workspace = getWorkspace(workspaceId);
         
-        // Delete all workspace members first (due to FK constraint)
-        workspaceMemberRepository.deleteByWorkspaceId(workspaceId);
-        
-        // Delete workspace
+        // Database cascade delete will handle workspace_members, boards, columns, tasks, etc.
         workspaceRepository.delete(workspace);
     }
     
@@ -92,11 +92,11 @@ public class WorkspaceServiceImpl implements WorkspaceService {
         
         // Find user by email
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found with email: " + email));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + email));
         
         // Check if user is already a member
         if (workspaceMemberRepository.findByWorkspaceIdAndUserId(workspaceId, user.getId()).isPresent()) {
-            throw new RuntimeException("User is already a member of this workspace");
+            throw new DuplicateResourceException("User is already a member of this workspace");
         }
         
         // Add member with specified role
@@ -111,11 +111,11 @@ public class WorkspaceServiceImpl implements WorkspaceService {
     public void joinWorkspace(String inviteToken, UUID userId) {
         // Find workspace by invite token
         Workspace workspace = workspaceRepository.findByInviteToken(inviteToken)
-                .orElseThrow(() -> new RuntimeException("Invalid invite token"));
+                .orElseThrow(() -> new ResourceNotFoundException("Invalid invite token"));
         
         // Check if user is already a member
         if (workspaceMemberRepository.findByWorkspaceIdAndUserId(workspace.getId(), userId).isPresent()) {
-            throw new RuntimeException("You are already a member of this workspace");
+            throw new DuplicateResourceException("You are already a member of this workspace");
         }
         
         // Add user as MEMBER role (default for join via invite)
@@ -127,11 +127,11 @@ public class WorkspaceServiceImpl implements WorkspaceService {
     public void addMember(UUID workspaceId, UUID userId, WorkspaceRole role) {
         Workspace workspace = getWorkspace(workspaceId);
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         
         // Check if member already exists
         if (workspaceMemberRepository.findByWorkspaceIdAndUserId(workspaceId, userId).isPresent()) {
-            throw new RuntimeException("User is already a member of this workspace");
+            throw new DuplicateResourceException("User is already a member of this workspace");
         }
         
         WorkspaceMember member = WorkspaceMember.builder()
@@ -148,11 +148,11 @@ public class WorkspaceServiceImpl implements WorkspaceService {
     public void removeMember(UUID workspaceId, UUID userId) {
         WorkspaceMember member = workspaceMemberRepository
                 .findByWorkspaceIdAndUserId(workspaceId, userId)
-                .orElseThrow(() -> new RuntimeException("Member not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Member not found"));
         
         // Prevent removing primary owner
         if (Boolean.TRUE.equals(member.getIsPrimaryOwner())) {
-            throw new RuntimeException("Cannot remove primary owner");
+            throw new InvalidOperationException("Cannot remove primary owner");
         }
         
         workspaceMemberRepository.delete(member);

@@ -4,6 +4,8 @@ import com.collabnest.backend.domain.entity.Notification;
 import com.collabnest.backend.domain.entity.User;
 import com.collabnest.backend.domain.entity.Workspace;
 import com.collabnest.backend.domain.enums.NotificationType;
+import com.collabnest.backend.exception.ResourceNotFoundException;
+import com.collabnest.backend.exception.UnauthorizedException;
 import com.collabnest.backend.notification.NotificationService;
 import com.collabnest.backend.notification.dto.NotificationDto;
 import com.collabnest.backend.notification.dto.NotificationStatsDto;
@@ -52,7 +54,7 @@ public class NotificationServiceImpl implements NotificationService {
             UUID actorId
     ) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         Workspace workspace = workspaceId != null ? 
                 workspaceRepository.findById(workspaceId).orElse(null) : null;
@@ -126,10 +128,10 @@ public class NotificationServiceImpl implements NotificationService {
     @Transactional
     public void deleteNotification(UUID notificationId, UUID userId) {
         Notification notification = notificationRepository.findById(notificationId)
-                .orElseThrow(() -> new RuntimeException("Notification not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Notification not found"));
 
         if (!notification.getUser().getId().equals(userId)) {
-            throw new RuntimeException("Unauthorized to delete this notification");
+            throw new UnauthorizedException("Unauthorized to delete this notification");
         }
 
         notificationRepository.delete(notification);
@@ -167,7 +169,7 @@ public class NotificationServiceImpl implements NotificationService {
             String entityName
     ) {
         User actor = userRepository.findById(actorId)
-                .orElseThrow(() -> new RuntimeException("Actor not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Actor not found"));
 
         for (UUID userId : mentionedUserIds) {
             // Don't notify the actor about their own mention

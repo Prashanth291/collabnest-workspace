@@ -6,9 +6,12 @@ import com.collabnest.backend.domain.entity.Task;
 import com.collabnest.backend.domain.entity.User;
 import com.collabnest.backend.domain.enums.ActivityType;
 import com.collabnest.backend.domain.enums.TaskPriority;
+import com.collabnest.backend.exception.ResourceNotFoundException;
+import com.collabnest.backend.exception.UnauthorizedException;
 import com.collabnest.backend.repository.BoardColumnRepository;
 import com.collabnest.backend.repository.TaskRepository;
 import com.collabnest.backend.repository.UserRepository;
+import com.collabnest.backend.repository.WorkspaceMemberRepository;
 import com.collabnest.backend.service.TaskService;
 import com.collabnest.backend.websocket.dto.TaskEvent;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +31,7 @@ public class TaskServiceImpl implements TaskService {
     private final TaskRepository taskRepository;
     private final BoardColumnRepository columnRepository;
     private final UserRepository userRepository;
+    private final WorkspaceMemberRepository workspaceMemberRepository;
     private final SimpMessagingTemplate messagingTemplate;
     private final ActivityLogService activityLogService;
 
@@ -35,10 +39,10 @@ public class TaskServiceImpl implements TaskService {
     @Transactional
     public Task createTask(UUID columnId, String title, String description, TaskPriority priority, LocalDate dueDate, UUID assigneeId) {
         BoardColumn column = columnRepository.findById(columnId)
-                .orElseThrow(() -> new RuntimeException("Column not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Column not found"));
         
         User createdBy = userRepository.findById(assigneeId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         
         // Get next position (max position + 1)
         Integer maxPosition = taskRepository.findMaxPositionByColumnId(columnId);
@@ -87,7 +91,7 @@ public class TaskServiceImpl implements TaskService {
     @Override
     public Task getTask(UUID taskId) {
         return taskRepository.findById(taskId)
-                .orElseThrow(() -> new RuntimeException("Task not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Task not found"));
     }
 
     @Override
@@ -153,13 +157,57 @@ public class TaskServiceImpl implements TaskService {
     public Task moveTask(UUID taskId, UUID newColumnId, Integer position) {
         Task task = getTask(taskId);
         BoardColumn newColumn = columnRepository.findById(newColumnId)
-                .orElseThrow(() -> new RuntimeException("Column not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Column not found"));
         
         UUID oldColumnId = task.getColumn().getId();
+        boolean movedToNewColumn = !oldColumnId.equals(newColumnId);
         
-        // If moving to a different column
-        if (!oldColumnId.equals(newColumnId)) {
+        // If moving to a different column, update positions in both columns
+        if (movedToNewColumn) {
+            // Update positions in old column (shift down tasks after removed position)
+            List<Task> oldColumnTasks = taskRepository.findByColumnIdOrderByPositionAsc(oldColumnId);
+            int oldPosition = task.getPosition();
+            for (Task t : oldColumnTasks) {
+                if (t.getPosition() > oldPosition && !t.getId().equals(taskId)) {
+                    t.setPosition(t.getPosition() - 1);
+                    taskRepository.save(t);
+                }
+            }
+            
+            // Update positions in new column (shift up tasks at or after new position)
+            List<Task> newColumnTasks = taskRepository.findByColumnIdOrderByPositionAsc(newColumnId);
+            for (Task t : newColumnTasks) {
+                if (t.getPosition() >= position) {
+                    t.setPosition(t.getPosition() + 1);
+                    taskRepository.save(t);
+                }
+            }
+            
             task.setColumn(newColumn);
+        } else {
+            // Moving within same column - adjust positions
+            List<Task> columnTasks = taskRepository.findByColumnIdOrderByPositionAsc(oldColumnId);
+            int oldPosition = task.getPosition();
+            
+            if (position != oldPosition) {
+                for (Task t : columnTasks) {
+                    if (t.getId().equals(taskId)) continue;
+                    
+                    if (oldPosition < position) {
+                        // Moving down: shift tasks between old and new position up
+                        if (t.getPosition() > oldPosition && t.getPosition() <= position) {
+                            t.setPosition(t.getPosition() - 1);
+                            taskRepository.save(t);
+                        }
+                    } else {
+                        // Moving up: shift tasks between new and old position down
+                        if (t.getPosition() >= position && t.getPosition() < oldPosition) {
+                            t.setPosition(t.getPosition() + 1);
+                            taskRepository.save(t);
+                        }
+                    }
+                }
+            }
         }
         
         task.setPosition(position);
@@ -187,7 +235,17 @@ public class TaskServiceImpl implements TaskService {
     public Task assignTask(UUID taskId, UUID userId) {
         Task task = getTask(taskId);
         User assignee = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        
+        // Validate that assignee is a member of the workspace
+        UUID workspaceId = task.getColumn().getBoard().getWorkspace().getId();
+        boolean isMember = workspaceMemberRepository
+                .findByWorkspaceIdAndUserId(workspaceId, userId)
+                .isPresent();
+        
+        if (!isMember) {
+            throw new UnauthorizedException("User is not a member of this workspace");
+        }
         
         task.setAssignee(assignee);
         Task assignedTask = taskRepository.save(task);

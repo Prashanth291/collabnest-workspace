@@ -47,6 +47,7 @@ public class User {
     private UserRole role;
 
     @Column(nullable = false)
+    @Builder.Default
     private Boolean enabled = true;
 
     @CreationTimestamp

@@ -4,6 +4,7 @@ import com.collabnest.backend.activity.ActivityLogService;
 import com.collabnest.backend.domain.entity.Comment;
 import com.collabnest.backend.domain.entity.User;
 import com.collabnest.backend.domain.enums.ActivityType;
+import com.collabnest.backend.exception.ResourceNotFoundException;
 import com.collabnest.backend.notification.NotificationService;
 import com.collabnest.backend.repository.CommentRepository;
 import com.collabnest.backend.repository.UserRepository;
@@ -32,7 +33,7 @@ public class CommentServiceImpl implements CommentService {
     @Transactional
     public Comment createComment(UUID entityId, String entityType, String content, UUID createdById) {
         User createdBy = userRepository.findById(createdById)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         
         Comment comment = Comment.builder()
                 .entityId(entityId)
@@ -62,7 +63,7 @@ public class CommentServiceImpl implements CommentService {
     @Override
     public Comment getComment(UUID commentId) {
         return commentRepository.findById(commentId)
-                .orElseThrow(() -> new RuntimeException("Comment not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Comment not found"));
     }
 
     @Override

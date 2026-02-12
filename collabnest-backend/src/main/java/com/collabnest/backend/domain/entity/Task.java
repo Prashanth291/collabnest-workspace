@@ -36,12 +36,14 @@ public class Task {
     private String description;
 
     @Enumerated(EnumType.STRING)
+    @Builder.Default
     private TaskPriority priority = TaskPriority.MEDIUM;
 
     @Column(name = "due_date")
     private LocalDate dueDate;
 
     @Column(nullable = false)
+    @Builder.Default
     private Integer position = 0;
 
     @ManyToOne
@@ -59,4 +61,8 @@ public class Task {
     @UpdateTimestamp
     @Column(name = "updated_at")
     private Instant updatedAt;
+
+    @Version
+    @Column(name = "version")
+    private Long version;
 }

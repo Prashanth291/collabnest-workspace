@@ -5,6 +5,10 @@ import com.collabnest.backend.auth.jwt.JwtService;
 import com.collabnest.backend.domain.entity.User;
 import com.collabnest.backend.domain.enums.AuthProvider;
 import com.collabnest.backend.domain.enums.UserRole;
+import com.collabnest.backend.exception.AccountDisabledException;
+import com.collabnest.backend.exception.DuplicateResourceException;
+import com.collabnest.backend.exception.ResourceNotFoundException;
+import com.collabnest.backend.exception.UnauthorizedException;
 import com.collabnest.backend.repository.UserRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -28,6 +32,16 @@ public class AuthService {
     }
 
     public AuthResponse register(RegisterRequest request) {
+        // Check for duplicate email
+        if (userRepository.findByEmail(request.email()).isPresent()) {
+            throw new DuplicateResourceException("Email already registered");
+        }
+        
+        // Check for duplicate username
+        if (userRepository.findByUsername(request.username()).isPresent()) {
+            throw new DuplicateResourceException("Username already taken");
+        }
+        
         User user = new User();
         user.setEmail(request.email());
         user.setUsername(request.username());
@@ -50,10 +64,15 @@ public class AuthService {
 
     public AuthResponse login(LoginRequest request) {
         User user = userRepository.findByEmailOrUsername(request.identifier(), request.identifier())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
-            throw new RuntimeException("Invalid credentials");
+            throw new UnauthorizedException("Invalid credentials");
+        }
+        
+        // Check if account is enabled
+        if (!user.getEnabled()) {
+            throw new AccountDisabledException("Account has been disabled. Please contact support.");
         }
 
         Map<String, Object> extraClaims = new HashMap<>();
@@ -66,6 +85,16 @@ public class AuthService {
     }
 
     public AuthResponse registerAdmin(RegisterRequest request) {
+        // Check for duplicate email
+        if (userRepository.findByEmail(request.email()).isPresent()) {
+            throw new DuplicateResourceException("Email already registered");
+        }
+        
+        // Check for duplicate username
+        if (userRepository.findByUsername(request.username()).isPresent()) {
+            throw new DuplicateResourceException("Username already taken");
+        }
+        
         User user = new User();
         user.setEmail(request.email());
         user.setUsername(request.username());

@@ -2,6 +2,7 @@ package com.collabnest.backend.service.impl;
 
 import com.collabnest.backend.domain.entity.Board;
 import com.collabnest.backend.domain.entity.BoardColumn;
+import com.collabnest.backend.exception.ResourceNotFoundException;
 import com.collabnest.backend.repository.BoardColumnRepository;
 import com.collabnest.backend.repository.BoardRepository;
 import com.collabnest.backend.service.ColumnService;
@@ -23,7 +24,7 @@ public class ColumnServiceImpl implements ColumnService {
     @Transactional
     public BoardColumn createColumn(UUID boardId, String name, Integer position) {
         Board board = boardRepository.findById(boardId)
-                .orElseThrow(() -> new RuntimeException("Board not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Board not found"));
         
         BoardColumn column = BoardColumn.builder()
                 .board(board)
@@ -37,7 +38,7 @@ public class ColumnServiceImpl implements ColumnService {
     @Override
     public BoardColumn getColumn(UUID columnId) {
         return columnRepository.findById(columnId)
-                .orElseThrow(() -> new RuntimeException("Column not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Column not found"));
     }
 
     @Override

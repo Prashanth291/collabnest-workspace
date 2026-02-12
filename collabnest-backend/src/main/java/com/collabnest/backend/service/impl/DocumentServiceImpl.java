@@ -3,6 +3,7 @@ package com.collabnest.backend.service.impl;
 import com.collabnest.backend.domain.entity.Document;
 import com.collabnest.backend.domain.entity.User;
 import com.collabnest.backend.domain.entity.Workspace;
+import com.collabnest.backend.exception.ResourceNotFoundException;
 import com.collabnest.backend.repository.DocumentRepository;
 import com.collabnest.backend.repository.UserRepository;
 import com.collabnest.backend.repository.WorkspaceRepository;
@@ -30,10 +31,10 @@ public class DocumentServiceImpl implements DocumentService {
     @Transactional
     public Document createDocument(UUID workspaceId, String title, String content, UUID createdById) {
         Workspace workspace = workspaceRepository.findById(workspaceId)
-                .orElseThrow(() -> new RuntimeException("Workspace not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Workspace not found"));
         
         User createdBy = userRepository.findById(createdById)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         
         Document document = Document.builder()
                 .workspace(workspace)
@@ -63,7 +64,7 @@ public class DocumentServiceImpl implements DocumentService {
     @Override
     public Document getDocument(UUID documentId) {
         return documentRepository.findById(documentId)
-                .orElseThrow(() -> new RuntimeException("Document not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Document not found"));
     }
 
     @Override
