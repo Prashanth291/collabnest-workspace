@@ -1,7 +1,9 @@
 package com.collabnest.backend.service.impl;
 
+import com.collabnest.backend.activity.ActivityLogService;
 import com.collabnest.backend.domain.entity.Board;
 import com.collabnest.backend.domain.entity.BoardColumn;
+import com.collabnest.backend.domain.enums.ActivityType;
 import com.collabnest.backend.exception.ResourceNotFoundException;
 import com.collabnest.backend.repository.BoardColumnRepository;
 import com.collabnest.backend.repository.BoardRepository;
@@ -19,19 +21,20 @@ public class ColumnServiceImpl implements ColumnService {
 
     private final BoardColumnRepository columnRepository;
     private final BoardRepository boardRepository;
+    private final ActivityLogService activityLogService;
 
     @Override
     @Transactional
     public BoardColumn createColumn(UUID boardId, String name, Integer position) {
         Board board = boardRepository.findById(boardId)
                 .orElseThrow(() -> new ResourceNotFoundException("Board not found"));
-        
+
         BoardColumn column = BoardColumn.builder()
                 .board(board)
                 .name(name)
                 .position(position)
                 .build();
-        
+
         return columnRepository.save(column);
     }
 
@@ -50,14 +53,14 @@ public class ColumnServiceImpl implements ColumnService {
     @Transactional
     public BoardColumn updateColumn(UUID columnId, String name, Integer position) {
         BoardColumn column = getColumn(columnId);
-        
+
         if (name != null) {
             column.setName(name);
         }
         if (position != null) {
             column.setPosition(position);
         }
-        
+
         return columnRepository.save(column);
     }
 
@@ -65,6 +68,17 @@ public class ColumnServiceImpl implements ColumnService {
     @Transactional
     public void deleteColumn(UUID columnId) {
         BoardColumn column = getColumn(columnId);
+        UUID workspaceId = column.getBoard().getWorkspace().getId();
+        String columnName = column.getName();
         columnRepository.delete(column);
+
+        activityLogService.logActivity(
+                workspaceId,
+                workspaceId,
+                ActivityType.COLUMN_DELETED,
+                "COLUMN",
+                columnId,
+                columnName,
+                String.format("Deleted column: %s", columnName));
     }
 }

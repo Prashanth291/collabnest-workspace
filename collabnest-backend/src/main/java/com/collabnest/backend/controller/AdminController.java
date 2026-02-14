@@ -2,6 +2,7 @@ package com.collabnest.backend.controller;
 
 import com.collabnest.backend.domain.entity.User;
 import com.collabnest.backend.domain.enums.UserRole;
+import com.collabnest.backend.dto.user.UserResponse;
 import com.collabnest.backend.security.UserPrincipal;
 import com.collabnest.backend.service.UserService;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -30,33 +31,46 @@ public class AdminController {
                 "userId", principal.getUserId(),
                 "username", principal.getUsername(),
                 "role", principal.getUser().getRole(),
-                "authorities", principal.getAuthorities()
-        );
+                "authorities", principal.getAuthorities());
     }
 
     @GetMapping("/users")
-    public List<User> getAllUsers() {
-        return userService.getAllUsers();
+    public List<UserResponse> getAllUsers() {
+        return userService.getAllUsers().stream()
+                .map(this::toUserResponse)
+                .toList();
     }
 
     @GetMapping("/users/{id}")
-    public User getUserById(@PathVariable UUID id) {
-        return userService.getUserById(id);
+    public UserResponse getUserById(@PathVariable UUID id) {
+        return toUserResponse(userService.getUserById(id));
     }
 
     @PutMapping("/users/{id}/role")
-    public User changeUserRole(@PathVariable UUID id, @RequestParam UserRole role) {
-        return userService.changeUserRole(id, role);
+    public UserResponse changeUserRole(@PathVariable UUID id, @RequestParam UserRole role) {
+        return toUserResponse(userService.changeUserRole(id, role));
     }
 
     @PutMapping("/users/{id}/enable")
-    public User enableUser(@PathVariable UUID id, @RequestParam boolean enabled) {
-        return userService.enableUser(id, enabled);
+    public UserResponse enableUser(@PathVariable UUID id, @RequestParam boolean enabled) {
+        return toUserResponse(userService.enableUser(id, enabled));
     }
 
     @DeleteMapping("/users/{id}")
     public Map<String, String> deleteUser(@PathVariable UUID id) {
         userService.deleteUser(id);
         return Map.of("message", "User deleted successfully");
+    }
+
+    private UserResponse toUserResponse(User user) {
+        return new UserResponse(
+                user.getId(),
+                user.getEmail(),
+                user.getUsername(),
+                user.getName(),
+                user.getAuthProvider(),
+                user.getRole(),
+                user.getEnabled(),
+                user.getCreatedAt());
     }
 }

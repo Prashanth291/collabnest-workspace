@@ -1,6 +1,7 @@
 package com.collabnest.backend.auth;
 
 import com.collabnest.backend.auth.dto.*;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -14,18 +15,18 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public AuthResponse register(@RequestBody RegisterRequest request) {
+    public AuthResponse register(@Valid @RequestBody RegisterRequest request) {
         return authService.register(request);
     }
 
     @PostMapping("/login")
-    public AuthResponse login(@RequestBody LoginRequest request) {
+    public AuthResponse login(@Valid @RequestBody LoginRequest request) {
         return authService.login(request);
     }
 
     @PostMapping("/register-admin")
     @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN')")
-    public AuthResponse registerAdmin(@RequestBody RegisterRequest request) {
+    public AuthResponse registerAdmin(@Valid @RequestBody RegisterRequest request) {
         return authService.registerAdmin(request);
     }
 }

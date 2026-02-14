@@ -31,16 +31,16 @@ public class WorkspaceServiceImpl implements WorkspaceService {
     public Workspace createWorkspace(String name, UUID ownerId) {
         User owner = userRepository.findById(ownerId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-        
+
         // Create workspace
         Workspace workspace = Workspace.builder()
                 .name(name)
                 .ownerId(ownerId)
                 .inviteToken(UUID.randomUUID().toString())
                 .build();
-        
+
         workspace = workspaceRepository.save(workspace);
-        
+
         // Automatically add owner as primary owner member
         WorkspaceMember ownerMember = WorkspaceMember.builder()
                 .workspace(workspace)
@@ -48,9 +48,9 @@ public class WorkspaceServiceImpl implements WorkspaceService {
                 .role(WorkspaceRole.OWNER)
                 .isPrimaryOwner(true)
                 .build();
-        
+
         workspaceMemberRepository.save(ownerMember);
-        
+
         return workspace;
     }
 
@@ -81,80 +81,104 @@ public class WorkspaceServiceImpl implements WorkspaceService {
     @Transactional
     public void deleteWorkspace(UUID workspaceId) {
         Workspace workspace = getWorkspace(workspaceId);
-        
-        // Database cascade delete will handle workspace_members, boards, columns, tasks, etc.
+
+        // Database cascade delete will handle workspace_members, boards, columns,
+        // tasks, etc.
         workspaceRepository.delete(workspace);
     }
-    
+
     @Override
     public String inviteMember(UUID workspaceId, String email, WorkspaceRole role, UUID inviterId) {
         Workspace workspace = getWorkspace(workspaceId);
-        
+
         // Find user by email
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + email));
-        
+
         // Check if user is already a member
         if (workspaceMemberRepository.findByWorkspaceIdAndUserId(workspaceId, user.getId()).isPresent()) {
             throw new DuplicateResourceException("User is already a member of this workspace");
         }
-        
+
         // Add member with specified role
         addMember(workspaceId, user.getId(), role);
-        
+
         // Return invite token for notification/email
         return workspace.getInviteToken();
     }
-    
+
     @Override
     @Transactional
     public void joinWorkspace(String inviteToken, UUID userId) {
         // Find workspace by invite token
         Workspace workspace = workspaceRepository.findByInviteToken(inviteToken)
                 .orElseThrow(() -> new ResourceNotFoundException("Invalid invite token"));
-        
+
         // Check if user is already a member
         if (workspaceMemberRepository.findByWorkspaceIdAndUserId(workspace.getId(), userId).isPresent()) {
             throw new DuplicateResourceException("You are already a member of this workspace");
         }
-        
+
         // Add user as MEMBER role (default for join via invite)
         addMember(workspace.getId(), userId, WorkspaceRole.MEMBER);
     }
-    
+
     @Override
     @Transactional
     public void addMember(UUID workspaceId, UUID userId, WorkspaceRole role) {
         Workspace workspace = getWorkspace(workspaceId);
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-        
+
         // Check if member already exists
         if (workspaceMemberRepository.findByWorkspaceIdAndUserId(workspaceId, userId).isPresent()) {
             throw new DuplicateResourceException("User is already a member of this workspace");
         }
-        
+
         WorkspaceMember member = WorkspaceMember.builder()
                 .workspace(workspace)
                 .user(user)
                 .role(role)
                 .isPrimaryOwner(false)
                 .build();
-        
+
         workspaceMemberRepository.save(member);
     }
-    
+
     @Override
     public void removeMember(UUID workspaceId, UUID userId) {
         WorkspaceMember member = workspaceMemberRepository
                 .findByWorkspaceIdAndUserId(workspaceId, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Member not found"));
-        
+
         // Prevent removing primary owner
         if (Boolean.TRUE.equals(member.getIsPrimaryOwner())) {
             throw new InvalidOperationException("Cannot remove primary owner");
         }
-        
+
         workspaceMemberRepository.delete(member);
+    }
+
+    @Override
+    public List<WorkspaceMember> listMembers(UUID workspaceId) {
+        // Validate workspace exists
+        getWorkspace(workspaceId);
+        return workspaceMemberRepository.findByWorkspaceId(workspaceId);
+    }
+
+    @Override
+    @Transactional
+    public WorkspaceMember changeMemberRole(UUID workspaceId, UUID userId, WorkspaceRole role) {
+        WorkspaceMember member = workspaceMemberRepository
+                .findByWorkspaceIdAndUserId(workspaceId, userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Member not found"));
+
+        // Prevent changing primary owner role
+        if (Boolean.TRUE.equals(member.getIsPrimaryOwner())) {
+            throw new InvalidOperationException("Cannot change primary owner's role");
+        }
+
+        member.setRole(role);
+        return workspaceMemberRepository.save(member);
     }
 }

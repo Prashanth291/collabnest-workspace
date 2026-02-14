@@ -1,10 +1,13 @@
 package com.collabnest.backend.controller;
 
 import com.collabnest.backend.domain.entity.Workspace;
+import com.collabnest.backend.domain.entity.WorkspaceMember;
 import com.collabnest.backend.domain.enums.WorkspaceRole;
+import com.collabnest.backend.dto.workspace.ChangeMemberRoleRequest;
 import com.collabnest.backend.dto.workspace.CreateWorkspaceRequest;
 import com.collabnest.backend.dto.workspace.InviteMemberRequest;
 import com.collabnest.backend.dto.workspace.JoinWorkspaceRequest;
+import com.collabnest.backend.dto.workspace.WorkspaceMemberResponse;
 import com.collabnest.backend.dto.workspace.WorkspaceResponse;
 import com.collabnest.backend.security.UserPrincipal;
 import com.collabnest.backend.security.WorkspacePermissionService;
@@ -41,18 +44,17 @@ public class WorkspaceController {
     public ResponseEntity<WorkspaceResponse> createWorkspace(
             @Valid @RequestBody CreateWorkspaceRequest request,
             @AuthenticationPrincipal UserPrincipal userPrincipal) {
-        
+
         UUID userId = userPrincipal.getUserId();
         Workspace workspace = workspaceService.createWorkspace(request.name(), userId);
-        
+
         WorkspaceResponse response = new WorkspaceResponse(
                 workspace.getId(),
                 workspace.getName(),
                 workspace.getOwnerId(),
                 WorkspaceRole.OWNER,
-                workspace.getCreatedAt()
-        );
-        
+                workspace.getCreatedAt());
+
         return ResponseEntity.ok(response);
     }
 
@@ -64,19 +66,18 @@ public class WorkspaceController {
     public ResponseEntity<WorkspaceResponse> getWorkspace(
             @PathVariable UUID workspaceId,
             @AuthenticationPrincipal UserPrincipal userPrincipal) {
-        
+
         UUID userId = userPrincipal.getUserId();
         Workspace workspace = workspaceService.getWorkspace(workspaceId);
         WorkspaceRole myRole = permissionService.getUserRole(userId, workspaceId);
-        
+
         WorkspaceResponse response = new WorkspaceResponse(
                 workspace.getId(),
                 workspace.getName(),
                 workspace.getOwnerId(),
                 myRole,
-                workspace.getCreatedAt()
-        );
-        
+                workspace.getCreatedAt());
+
         return ResponseEntity.ok(response);
     }
 
@@ -87,10 +88,10 @@ public class WorkspaceController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<WorkspaceResponse>> listMyWorkspaces(
             @AuthenticationPrincipal UserPrincipal userPrincipal) {
-        
+
         UUID userId = userPrincipal.getUserId();
         List<Workspace> workspaces = workspaceService.getUserWorkspaces(userId);
-        
+
         List<WorkspaceResponse> responses = workspaces.stream()
                 .map(workspace -> {
                     WorkspaceRole myRole = permissionService.getUserRole(userId, workspace.getId());
@@ -99,11 +100,10 @@ public class WorkspaceController {
                             workspace.getName(),
                             workspace.getOwnerId(),
                             myRole,
-                            workspace.getCreatedAt()
-                    );
+                            workspace.getCreatedAt());
                 })
                 .toList();
-        
+
         return ResponseEntity.ok(responses);
     }
 
@@ -116,19 +116,18 @@ public class WorkspaceController {
             @PathVariable UUID workspaceId,
             @Valid @RequestBody CreateWorkspaceRequest request,
             @AuthenticationPrincipal UserPrincipal userPrincipal) {
-        
+
         UUID userId = userPrincipal.getUserId();
         Workspace workspace = workspaceService.updateWorkspace(workspaceId, request.name());
         WorkspaceRole myRole = permissionService.getUserRole(userId, workspaceId);
-        
+
         WorkspaceResponse response = new WorkspaceResponse(
                 workspace.getId(),
                 workspace.getName(),
                 workspace.getOwnerId(),
                 myRole,
-                workspace.getCreatedAt()
-        );
-        
+                workspace.getCreatedAt());
+
         return ResponseEntity.ok(response);
     }
 
@@ -151,15 +150,14 @@ public class WorkspaceController {
             @PathVariable UUID workspaceId,
             @Valid @RequestBody InviteMemberRequest request,
             @AuthenticationPrincipal UserPrincipal userPrincipal) {
-        
+
         UUID inviterId = userPrincipal.getUserId();
         String inviteToken = workspaceService.inviteMember(
-                workspaceId, 
-                request.email(), 
-                request.role(), 
-                inviterId
-        );
-        
+                workspaceId,
+                request.email(),
+                request.role(),
+                inviterId);
+
         return ResponseEntity.ok(inviteToken);
     }
 
@@ -171,10 +169,10 @@ public class WorkspaceController {
     public ResponseEntity<Void> joinWorkspace(
             @Valid @RequestBody JoinWorkspaceRequest request,
             @AuthenticationPrincipal UserPrincipal userPrincipal) {
-        
+
         UUID userId = userPrincipal.getUserId();
         workspaceService.joinWorkspace(request.inviteToken(), userId);
-        
+
         return ResponseEntity.ok().build();
     }
 
@@ -186,8 +184,54 @@ public class WorkspaceController {
     public ResponseEntity<Void> removeMember(
             @PathVariable UUID workspaceId,
             @PathVariable UUID userId) {
-        
+
         workspaceService.removeMember(workspaceId, userId);
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * List all members of a workspace - requires VIEWER access.
+     */
+    @GetMapping("/{workspaceId}/members")
+    @PreAuthorize("hasPermission(#workspaceId, 'Workspace', 'VIEWER')")
+    public ResponseEntity<List<WorkspaceMemberResponse>> listMembers(
+            @PathVariable UUID workspaceId) {
+
+        List<WorkspaceMember> members = workspaceService.listMembers(workspaceId);
+        List<WorkspaceMemberResponse> responses = members.stream()
+                .map(m -> new WorkspaceMemberResponse(
+                        m.getId(),
+                        m.getUser().getId(),
+                        m.getUser().getUsername(),
+                        m.getUser().getName(),
+                        m.getUser().getEmail(),
+                        m.getRole(),
+                        m.getIsPrimaryOwner(),
+                        m.getJoinedAt()))
+                .toList();
+        return ResponseEntity.ok(responses);
+    }
+
+    /**
+     * Change a member's role - requires ADMIN or OWNER.
+     */
+    @PutMapping("/{workspaceId}/members/{userId}/role")
+    @PreAuthorize("hasPermission(#workspaceId, 'Workspace', 'ADMIN')")
+    public ResponseEntity<WorkspaceMemberResponse> changeMemberRole(
+            @PathVariable UUID workspaceId,
+            @PathVariable UUID userId,
+            @Valid @RequestBody ChangeMemberRoleRequest request) {
+
+        WorkspaceMember member = workspaceService.changeMemberRole(workspaceId, userId, request.role());
+        WorkspaceMemberResponse response = new WorkspaceMemberResponse(
+                member.getId(),
+                member.getUser().getId(),
+                member.getUser().getUsername(),
+                member.getUser().getName(),
+                member.getUser().getEmail(),
+                member.getRole(),
+                member.getIsPrimaryOwner(),
+                member.getJoinedAt());
+        return ResponseEntity.ok(response);
     }
 }

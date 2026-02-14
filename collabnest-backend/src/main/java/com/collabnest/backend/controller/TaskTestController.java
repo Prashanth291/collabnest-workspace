@@ -28,113 +28,75 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class TaskTestController {
 
-    private final TaskService taskService;
-    private final TaskRepository taskRepository;
-    private final BoardColumnRepository boardColumnRepository;
-    private final WorkspaceRepository workspaceRepository;
+        private final TaskService taskService;
+        private final TaskRepository taskRepository;
+        private final BoardColumnRepository boardColumnRepository;
+        private final WorkspaceRepository workspaceRepository;
 
-    /**
-     * Simplified task creation for testing - finds first column in workspace
-     */
-    @PostMapping
-    @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<TaskResponse> createTask(
-            @Valid @RequestBody CreateTaskTestRequest request,
-            @AuthenticationPrincipal UserPrincipal userPrincipal) {
+        /**
+         * Simplified task creation for testing - finds first column in workspace
+         */
+        @PostMapping
+        @PreAuthorize("isAuthenticated()")
+        public ResponseEntity<TaskResponse> createTask(
+                        @Valid @RequestBody CreateTaskTestRequest request,
+                        @AuthenticationPrincipal UserPrincipal userPrincipal) {
 
-        // Find first column in the workspace
-        var columns = boardColumnRepository.findAll().stream()
-                .filter(col -> col.getBoard().getWorkspace().getId().equals(request.workspaceId()))
-                .toList();
+                // Find first column in the workspace
+                var columns = boardColumnRepository.findAll().stream()
+                                .filter(col -> col.getBoard().getWorkspace().getId().equals(request.workspaceId()))
+                                .toList();
 
-        if (columns.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+                if (columns.isEmpty()) {
+                        return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+                }
+
+                UUID columnId = columns.get(0).getId();
+                UUID userId = userPrincipal.getUserId();
+
+                Task task = taskService.createTask(
+                                columnId,
+                                request.title(),
+                                request.description(),
+                                request.priority(),
+                                null, // dueDate
+                                userId);
+
+                return ResponseEntity.status(HttpStatus.CREATED).body(TaskResponse.fromEntity(task));
         }
 
-        UUID columnId = columns.get(0).getId();
-        UUID userId = userPrincipal.getUserId();
+        /**
+         * Get all tasks (for testing)
+         */
+        @GetMapping
+        @PreAuthorize("isAuthenticated()")
+        public ResponseEntity<List<TaskResponse>> getAllTasks() {
+                List<Task> tasks = taskRepository.findAll();
 
-        Task task = taskService.createTask(
-                columnId,
-                request.title(),
-                request.description(),
-                request.priority(),
-                null, // dueDate
-                userId
-        );
+                List<TaskResponse> responses = tasks.stream()
+                                .map(TaskResponse::fromEntity)
+                                .toList();
 
-        TaskResponse response = new TaskResponse(
-                task.getId(),
-                task.getColumn().getId(),
-                task.getTitle(),
-                task.getDescription(),
-                task.getPriority(),
-                task.getDueDate(),
-                task.getPosition(),
-                task.getCreatedBy().getId(),
-                task.getCreatedAt(),
-                task.getUpdatedAt()
-        );
+                return ResponseEntity.ok(responses);
+        }
 
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
-    }
+        /**
+         * Get specific task
+         */
+        @GetMapping("/{taskId}")
+        @PreAuthorize("isAuthenticated()")
+        public ResponseEntity<TaskResponse> getTask(@PathVariable UUID taskId) {
+                Task task = taskService.getTask(taskId);
 
-    /**
-     * Get all tasks (for testing)
-     */
-    @GetMapping
-    @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<List<TaskResponse>> getAllTasks() {
-        List<Task> tasks = taskRepository.findAll();
+                return ResponseEntity.ok(TaskResponse.fromEntity(task));
+        }
 
-        List<TaskResponse> responses = tasks.stream()
-                .map(task -> new TaskResponse(
-                        task.getId(),
-                        task.getColumn().getId(),
-                        task.getTitle(),
-                        task.getDescription(),
-                        task.getPriority(),
-                        task.getDueDate(),
-                        task.getPosition(),
-                        task.getCreatedBy().getId(),
-                        task.getCreatedAt(),
-                        task.getUpdatedAt()
-                ))
-                .toList();
-
-        return ResponseEntity.ok(responses);
-    }
-
-    /**
-     * Get specific task
-     */
-    @GetMapping("/{taskId}")
-    @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<TaskResponse> getTask(@PathVariable UUID taskId) {
-        Task task = taskService.getTask(taskId);
-
-        TaskResponse response = new TaskResponse(
-                task.getId(),
-                task.getColumn().getId(),
-                task.getTitle(),
-                task.getDescription(),
-                task.getPriority(),
-                task.getDueDate(),
-                task.getPosition(),
-                task.getCreatedBy().getId(),
-                task.getCreatedAt(),
-                task.getUpdatedAt()
-        );
-
-        return ResponseEntity.ok(response);
-    }
-
-    // DTO for simplified task creation
-    public record CreateTaskTestRequest(
-            UUID workspaceId,
-            String title,
-            String description,
-            String status, // Ignored - kept for compatibility
-            TaskPriority priority
-    ) {}
+        // DTO for simplified task creation
+        public record CreateTaskTestRequest(
+                        UUID workspaceId,
+                        String title,
+                        String description,
+                        String status, // Ignored - kept for compatibility
+                        TaskPriority priority) {
+        }
 }

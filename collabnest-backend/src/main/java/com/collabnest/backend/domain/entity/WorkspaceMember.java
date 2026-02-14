@@ -4,14 +4,13 @@ import com.collabnest.backend.domain.enums.WorkspaceRole;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(
-        name = "workspace_members",
-        uniqueConstraints = @UniqueConstraint(columnNames = {"workspace_id", "user_id"})
-)
-@Getter @Setter
+@Table(name = "workspace_members", uniqueConstraints = @UniqueConstraint(columnNames = { "workspace_id", "user_id" }))
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -33,4 +32,12 @@ public class WorkspaceMember {
     private WorkspaceRole role;
 
     private Boolean isPrimaryOwner;
+
+    @Column(name = "joined_at", updatable = false)
+    private Instant joinedAt;
+
+    @PrePersist
+    protected void onCreate() {
+        joinedAt = Instant.now();
+    }
 }

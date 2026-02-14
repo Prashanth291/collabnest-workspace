@@ -3,6 +3,7 @@ package com.collabnest.backend.controller;
 import com.collabnest.backend.domain.entity.Board;
 import com.collabnest.backend.domain.entity.BoardColumn;
 import com.collabnest.backend.dto.board.BoardResponse;
+import com.collabnest.backend.dto.board.ColumnResponse;
 import com.collabnest.backend.dto.board.CreateBoardRequest;
 import com.collabnest.backend.dto.board.CreateColumnRequest;
 import com.collabnest.backend.service.BoardService;
@@ -38,21 +39,19 @@ public class BoardController {
     public ResponseEntity<BoardResponse> createBoard(
             @PathVariable UUID workspaceId,
             @Valid @RequestBody CreateBoardRequest request) {
-        
+
         Board board = boardService.createBoard(
-                workspaceId, 
+                workspaceId,
                 request.name(),
-                request.position()
-        );
-        
+                request.position());
+
         BoardResponse response = new BoardResponse(
                 board.getId(),
                 board.getWorkspace().getId(),
                 board.getName(),
                 board.getPosition(),
-                board.getCreatedAt()
-        );
-        
+                board.getCreatedAt());
+
         return ResponseEntity.ok(response);
     }
 
@@ -63,17 +62,16 @@ public class BoardController {
     @PreAuthorize("hasPermission(#workspaceId, 'Workspace', 'VIEWER')")
     public ResponseEntity<List<BoardResponse>> getBoards(@PathVariable UUID workspaceId) {
         List<Board> boards = boardService.getWorkspaceBoards(workspaceId);
-        
+
         List<BoardResponse> responses = boards.stream()
                 .map(board -> new BoardResponse(
                         board.getId(),
                         board.getWorkspace().getId(),
                         board.getName(),
                         board.getPosition(),
-                        board.getCreatedAt()
-                ))
+                        board.getCreatedAt()))
                 .toList();
-        
+
         return ResponseEntity.ok(responses);
     }
 
@@ -85,22 +83,21 @@ public class BoardController {
     public ResponseEntity<BoardResponse> getBoard(
             @PathVariable UUID workspaceId,
             @PathVariable UUID boardId) {
-        
+
         Board board = boardService.getBoard(boardId);
-        
+
         // Verify the board belongs to this workspace
         if (!board.getWorkspace().getId().equals(workspaceId)) {
             return ResponseEntity.notFound().build();
         }
-        
+
         BoardResponse response = new BoardResponse(
                 board.getId(),
                 board.getWorkspace().getId(),
                 board.getName(),
                 board.getPosition(),
-                board.getCreatedAt()
-        );
-        
+                board.getCreatedAt());
+
         return ResponseEntity.ok(response);
     }
 
@@ -113,26 +110,24 @@ public class BoardController {
             @PathVariable UUID workspaceId,
             @PathVariable UUID boardId,
             @Valid @RequestBody CreateBoardRequest request) {
-        
+
         Board board = boardService.updateBoard(
-                boardId, 
+                boardId,
                 request.name(),
-                request.position()
-        );
-        
+                request.position());
+
         // Verify the board belongs to this workspace
         if (!board.getWorkspace().getId().equals(workspaceId)) {
             return ResponseEntity.notFound().build();
         }
-        
+
         BoardResponse response = new BoardResponse(
                 board.getId(),
                 board.getWorkspace().getId(),
                 board.getName(),
                 board.getPosition(),
-                board.getCreatedAt()
-        );
-        
+                board.getCreatedAt());
+
         return ResponseEntity.ok(response);
     }
 
@@ -144,14 +139,14 @@ public class BoardController {
     public ResponseEntity<Void> deleteBoard(
             @PathVariable UUID workspaceId,
             @PathVariable UUID boardId) {
-        
+
         Board board = boardService.getBoard(boardId);
-        
+
         // Verify the board belongs to this workspace
         if (!board.getWorkspace().getId().equals(workspaceId)) {
             return ResponseEntity.notFound().build();
         }
-        
+
         boardService.deleteBoard(boardId);
         return ResponseEntity.noContent().build();
     }
@@ -161,18 +156,17 @@ public class BoardController {
      */
     @PostMapping("/{boardId}/columns")
     @PreAuthorize("hasPermission(#workspaceId, 'Workspace', 'MEMBER')")
-    public ResponseEntity<BoardColumn> createColumn(
+    public ResponseEntity<ColumnResponse> createColumn(
             @PathVariable UUID workspaceId,
             @PathVariable UUID boardId,
             @Valid @RequestBody CreateColumnRequest request) {
-        
+
         BoardColumn column = columnService.createColumn(
                 boardId,
                 request.name(),
-                request.position()
-        );
-        
-        return ResponseEntity.ok(column);
+                request.position());
+
+        return ResponseEntity.ok(toColumnResponse(column));
     }
 
     /**
@@ -180,12 +174,33 @@ public class BoardController {
      */
     @GetMapping("/{boardId}/columns")
     @PreAuthorize("hasPermission(#workspaceId, 'Workspace', 'VIEWER')")
-    public ResponseEntity<List<BoardColumn>> getColumns(
+    public ResponseEntity<List<ColumnResponse>> getColumns(
             @PathVariable UUID workspaceId,
             @PathVariable UUID boardId) {
-        
+
         List<BoardColumn> columns = columnService.getBoardColumns(boardId);
-        return ResponseEntity.ok(columns);
+        List<ColumnResponse> responses = columns.stream()
+                .map(this::toColumnResponse)
+                .toList();
+        return ResponseEntity.ok(responses);
+    }
+
+    /**
+     * Update a column - requires MEMBER role.
+     */
+    @PutMapping("/{boardId}/columns/{columnId}")
+    @PreAuthorize("hasPermission(#workspaceId, 'Workspace', 'MEMBER')")
+    public ResponseEntity<ColumnResponse> updateColumn(
+            @PathVariable UUID workspaceId,
+            @PathVariable UUID boardId,
+            @PathVariable UUID columnId,
+            @Valid @RequestBody CreateColumnRequest request) {
+
+        BoardColumn column = columnService.updateColumn(
+                columnId,
+                request.name(),
+                request.position());
+        return ResponseEntity.ok(toColumnResponse(column));
     }
 
     /**
@@ -197,8 +212,16 @@ public class BoardController {
             @PathVariable UUID workspaceId,
             @PathVariable UUID boardId,
             @PathVariable UUID columnId) {
-        
+
         columnService.deleteColumn(columnId);
         return ResponseEntity.noContent().build();
+    }
+
+    private ColumnResponse toColumnResponse(BoardColumn column) {
+        return new ColumnResponse(
+                column.getId(),
+                column.getBoard().getId(),
+                column.getName(),
+                column.getPosition());
     }
 }

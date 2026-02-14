@@ -1,8 +1,10 @@
 package com.collabnest.backend.service.impl;
 
+import com.collabnest.backend.activity.ActivityLogService;
 import com.collabnest.backend.domain.entity.Document;
 import com.collabnest.backend.domain.entity.User;
 import com.collabnest.backend.domain.entity.Workspace;
+import com.collabnest.backend.domain.enums.ActivityType;
 import com.collabnest.backend.exception.ResourceNotFoundException;
 import com.collabnest.backend.repository.DocumentRepository;
 import com.collabnest.backend.repository.UserRepository;
@@ -26,25 +28,26 @@ public class DocumentServiceImpl implements DocumentService {
     private final WorkspaceRepository workspaceRepository;
     private final UserRepository userRepository;
     private final SimpMessagingTemplate messagingTemplate;
+    private final ActivityLogService activityLogService;
 
     @Override
     @Transactional
     public Document createDocument(UUID workspaceId, String title, String content, UUID createdById) {
         Workspace workspace = workspaceRepository.findById(workspaceId)
                 .orElseThrow(() -> new ResourceNotFoundException("Workspace not found"));
-        
+
         User createdBy = userRepository.findById(createdById)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-        
+
         Document document = Document.builder()
                 .workspace(workspace)
                 .title(title)
                 .content(content)
                 .createdBy(createdBy)
                 .build();
-        
+
         Document savedDocument = documentRepository.save(document);
-        
+
         // Broadcast document creation event
         DocumentEvent event = DocumentEvent.builder()
                 .type(DocumentEvent.EventType.DOCUMENT_CREATED)
@@ -55,9 +58,19 @@ public class DocumentServiceImpl implements DocumentService {
                 .payload(savedDocument)
                 .timestamp(LocalDateTime.now())
                 .build();
-        
+
         messagingTemplate.convertAndSend("/topic/workspace/" + workspaceId, event);
-        
+
+        // Log activity
+        activityLogService.logActivity(
+                workspaceId,
+                createdById,
+                ActivityType.DOCUMENT_CREATED,
+                "DOCUMENT",
+                savedDocument.getId(),
+                savedDocument.getTitle(),
+                String.format("Created document: %s", savedDocument.getTitle()));
+
         return savedDocument;
     }
 
@@ -76,16 +89,16 @@ public class DocumentServiceImpl implements DocumentService {
     @Transactional
     public Document updateDocument(UUID documentId, String title, String content) {
         Document document = getDocument(documentId);
-        
+
         if (title != null) {
             document.setTitle(title);
         }
         if (content != null) {
             document.setContent(content);
         }
-        
+
         Document updatedDocument = documentRepository.save(document);
-        
+
         // Broadcast document update event
         DocumentEvent event = DocumentEvent.builder()
                 .type(DocumentEvent.EventType.DOCUMENT_UPDATED)
@@ -96,9 +109,19 @@ public class DocumentServiceImpl implements DocumentService {
                 .payload(updatedDocument)
                 .timestamp(LocalDateTime.now())
                 .build();
-        
+
         messagingTemplate.convertAndSend("/topic/document/" + documentId, event);
-        
+
+        // Log activity
+        activityLogService.logActivity(
+                updatedDocument.getWorkspace().getId(),
+                updatedDocument.getCreatedBy().getId(),
+                ActivityType.DOCUMENT_UPDATED,
+                "DOCUMENT",
+                updatedDocument.getId(),
+                updatedDocument.getTitle(),
+                String.format("Updated document: %s", updatedDocument.getTitle()));
+
         return updatedDocument;
     }
 
@@ -109,9 +132,9 @@ public class DocumentServiceImpl implements DocumentService {
         UUID workspaceId = document.getWorkspace().getId();
         UUID userId = document.getCreatedBy().getId();
         String userName = document.getCreatedBy().getUsername();
-        
+
         documentRepository.delete(document);
-        
+
         // Broadcast document deletion event
         DocumentEvent event = DocumentEvent.builder()
                 .type(DocumentEvent.EventType.DOCUMENT_DELETED)
@@ -122,7 +145,17 @@ public class DocumentServiceImpl implements DocumentService {
                 .payload(null)
                 .timestamp(LocalDateTime.now())
                 .build();
-        
+
         messagingTemplate.convertAndSend("/topic/workspace/" + workspaceId, event);
+
+        // Log activity
+        activityLogService.logActivity(
+                workspaceId,
+                userId,
+                ActivityType.DOCUMENT_DELETED,
+                "DOCUMENT",
+                documentId,
+                document.getTitle(),
+                String.format("Deleted document: %s", document.getTitle()));
     }
 }

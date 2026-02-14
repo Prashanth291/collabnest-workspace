@@ -24,13 +24,12 @@ public class ActivityController {
      * Get activity feed for a workspace
      */
     @GetMapping("/workspace/{workspaceId}")
-    @PreAuthorize("hasRole('USER')")
+    @PreAuthorize("hasPermission(#workspaceId, 'Workspace', 'VIEWER')")
     public ResponseEntity<Page<ActivityLogDto>> getWorkspaceActivities(
             @PathVariable UUID workspaceId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
-            @AuthenticationPrincipal UserPrincipal userPrincipal
-    ) {
+            @AuthenticationPrincipal UserPrincipal userPrincipal) {
         Pageable pageable = PageRequest.of(page, size);
         Page<ActivityLogDto> activities = activityLogService.getWorkspaceActivities(workspaceId, pageable);
         return ResponseEntity.ok(activities);
@@ -40,16 +39,16 @@ public class ActivityController {
      * Get activities for a specific user in a workspace
      */
     @GetMapping("/workspace/{workspaceId}/user/{userId}")
-    @PreAuthorize("hasRole('USER')")
+    @PreAuthorize("hasPermission(#workspaceId, 'Workspace', 'VIEWER')")
     public ResponseEntity<Page<ActivityLogDto>> getUserActivitiesInWorkspace(
             @PathVariable UUID workspaceId,
             @PathVariable UUID userId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
-            @AuthenticationPrincipal UserPrincipal userPrincipal
-    ) {
+            @AuthenticationPrincipal UserPrincipal userPrincipal) {
         Pageable pageable = PageRequest.of(page, size);
-        Page<ActivityLogDto> activities = activityLogService.getUserActivitiesInWorkspace(workspaceId, userId, pageable);
+        Page<ActivityLogDto> activities = activityLogService.getUserActivitiesInWorkspace(workspaceId, userId,
+                pageable);
         return ResponseEntity.ok(activities);
     }
 
@@ -57,19 +56,17 @@ public class ActivityController {
      * Get my activities across all workspaces
      */
     @GetMapping("/me")
-    @PreAuthorize("hasRole('USER')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Page<ActivityLogDto>> getMyActivities(
             @RequestParam UUID workspaceId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
-            @AuthenticationPrincipal UserPrincipal userPrincipal
-    ) {
+            @AuthenticationPrincipal UserPrincipal userPrincipal) {
         Pageable pageable = PageRequest.of(page, size);
         Page<ActivityLogDto> activities = activityLogService.getUserActivitiesInWorkspace(
-                workspaceId, 
-                userPrincipal.getUserId(), 
-                pageable
-        );
+                workspaceId,
+                userPrincipal.getUserId(),
+                pageable);
         return ResponseEntity.ok(activities);
     }
 }

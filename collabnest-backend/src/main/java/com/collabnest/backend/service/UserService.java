@@ -44,4 +44,15 @@ public class UserService {
         user.setEnabled(enabled);
         return userRepository.save(user);
     }
+
+    public User updateProfile(UUID userId, String name, String email) {
+        User user = getUserById(userId);
+        if (name != null && !name.isBlank()) {
+            user.setName(name);
+        }
+        if (email != null && !email.isBlank()) {
+            user.setEmail(email);
+        }
+        return userRepository.save(user);
+    }
 }

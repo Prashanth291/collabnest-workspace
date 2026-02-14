@@ -13,5 +13,7 @@ public interface CommentService {
 
     List<Comment> getEntityComments(UUID entityId, String entityType);
 
+    Comment updateComment(UUID commentId, String content);
+
     void deleteComment(UUID commentId);
 }

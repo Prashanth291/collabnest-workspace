@@ -37,17 +37,18 @@ public class TaskServiceImpl implements TaskService {
 
     @Override
     @Transactional
-    public Task createTask(UUID columnId, String title, String description, TaskPriority priority, LocalDate dueDate, UUID assigneeId) {
+    public Task createTask(UUID columnId, String title, String description, TaskPriority priority, LocalDate dueDate,
+            UUID createdByUserId) {
         BoardColumn column = columnRepository.findById(columnId)
                 .orElseThrow(() -> new ResourceNotFoundException("Column not found"));
-        
-        User createdBy = userRepository.findById(assigneeId)
+
+        User createdBy = userRepository.findById(createdByUserId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-        
+
         // Get next position (max position + 1)
         Integer maxPosition = taskRepository.findMaxPositionByColumnId(columnId);
         Integer newPosition = (maxPosition == null) ? 0 : maxPosition + 1;
-        
+
         Task task = Task.builder()
                 .column(column)
                 .title(title)
@@ -57,9 +58,9 @@ public class TaskServiceImpl implements TaskService {
                 .position(newPosition)
                 .createdBy(createdBy)
                 .build();
-        
+
         Task savedTask = taskRepository.save(task);
-        
+
         // Broadcast task creation event
         TaskEvent event = TaskEvent.builder()
                 .type(TaskEvent.EventType.TASK_CREATED)
@@ -71,9 +72,9 @@ public class TaskServiceImpl implements TaskService {
                 .payload(savedTask)
                 .timestamp(LocalDateTime.now())
                 .build();
-        
+
         messagingTemplate.convertAndSend("/topic/board/" + column.getBoard().getId(), event);
-        
+
         // Log activity
         activityLogService.logActivity(
                 column.getBoard().getWorkspace().getId(),
@@ -82,9 +83,8 @@ public class TaskServiceImpl implements TaskService {
                 "TASK",
                 savedTask.getId(),
                 savedTask.getTitle(),
-                String.format("Created task: %s", savedTask.getTitle())
-        );
-        
+                String.format("Created task: %s", savedTask.getTitle()));
+
         return savedTask;
     }
 
@@ -98,7 +98,7 @@ public class TaskServiceImpl implements TaskService {
     public List<Task> getColumnTasks(UUID columnId) {
         return taskRepository.findByColumnIdOrderByPositionAsc(columnId);
     }
-    
+
     @Override
     public List<Task> getTasksByWorkspace(UUID workspaceId) {
         return taskRepository.findByWorkspaceId(workspaceId);
@@ -108,7 +108,7 @@ public class TaskServiceImpl implements TaskService {
     @Transactional
     public Task updateTask(UUID taskId, String title, String description, TaskPriority priority, LocalDate dueDate) {
         Task task = getTask(taskId);
-        
+
         if (title != null) {
             task.setTitle(title);
         }
@@ -121,9 +121,9 @@ public class TaskServiceImpl implements TaskService {
         if (dueDate != null) {
             task.setDueDate(dueDate);
         }
-        
+
         Task updatedTask = taskRepository.save(task);
-        
+
         // Broadcast task update event
         TaskEvent event = TaskEvent.builder()
                 .type(TaskEvent.EventType.TASK_UPDATED)
@@ -135,9 +135,9 @@ public class TaskServiceImpl implements TaskService {
                 .payload(updatedTask)
                 .timestamp(LocalDateTime.now())
                 .build();
-        
+
         messagingTemplate.convertAndSend("/topic/board/" + updatedTask.getColumn().getBoard().getId(), event);
-        
+
         // Log activity
         activityLogService.logActivity(
                 updatedTask.getColumn().getBoard().getWorkspace().getId(),
@@ -146,9 +146,8 @@ public class TaskServiceImpl implements TaskService {
                 "TASK",
                 updatedTask.getId(),
                 updatedTask.getTitle(),
-                String.format("Updated task: %s", updatedTask.getTitle())
-        );
-        
+                String.format("Updated task: %s", updatedTask.getTitle()));
+
         return updatedTask;
     }
 
@@ -158,10 +157,10 @@ public class TaskServiceImpl implements TaskService {
         Task task = getTask(taskId);
         BoardColumn newColumn = columnRepository.findById(newColumnId)
                 .orElseThrow(() -> new ResourceNotFoundException("Column not found"));
-        
+
         UUID oldColumnId = task.getColumn().getId();
         boolean movedToNewColumn = !oldColumnId.equals(newColumnId);
-        
+
         // If moving to a different column, update positions in both columns
         if (movedToNewColumn) {
             // Update positions in old column (shift down tasks after removed position)
@@ -173,7 +172,7 @@ public class TaskServiceImpl implements TaskService {
                     taskRepository.save(t);
                 }
             }
-            
+
             // Update positions in new column (shift up tasks at or after new position)
             List<Task> newColumnTasks = taskRepository.findByColumnIdOrderByPositionAsc(newColumnId);
             for (Task t : newColumnTasks) {
@@ -182,17 +181,18 @@ public class TaskServiceImpl implements TaskService {
                     taskRepository.save(t);
                 }
             }
-            
+
             task.setColumn(newColumn);
         } else {
             // Moving within same column - adjust positions
             List<Task> columnTasks = taskRepository.findByColumnIdOrderByPositionAsc(oldColumnId);
             int oldPosition = task.getPosition();
-            
+
             if (position != oldPosition) {
                 for (Task t : columnTasks) {
-                    if (t.getId().equals(taskId)) continue;
-                    
+                    if (t.getId().equals(taskId))
+                        continue;
+
                     if (oldPosition < position) {
                         // Moving down: shift tasks between old and new position up
                         if (t.getPosition() > oldPosition && t.getPosition() <= position) {
@@ -209,10 +209,10 @@ public class TaskServiceImpl implements TaskService {
                 }
             }
         }
-        
+
         task.setPosition(position);
         Task movedTask = taskRepository.save(task);
-        
+
         // Broadcast task move event
         TaskEvent event = TaskEvent.builder()
                 .type(TaskEvent.EventType.TASK_MOVED)
@@ -224,32 +224,32 @@ public class TaskServiceImpl implements TaskService {
                 .payload(movedTask)
                 .timestamp(LocalDateTime.now())
                 .build();
-        
+
         messagingTemplate.convertAndSend("/topic/board/" + newColumn.getBoard().getId(), event);
-        
+
         return movedTask;
     }
-    
+
     @Override
     @Transactional
     public Task assignTask(UUID taskId, UUID userId) {
         Task task = getTask(taskId);
         User assignee = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-        
+
         // Validate that assignee is a member of the workspace
         UUID workspaceId = task.getColumn().getBoard().getWorkspace().getId();
         boolean isMember = workspaceMemberRepository
                 .findByWorkspaceIdAndUserId(workspaceId, userId)
                 .isPresent();
-        
+
         if (!isMember) {
             throw new UnauthorizedException("User is not a member of this workspace");
         }
-        
+
         task.setAssignee(assignee);
         Task assignedTask = taskRepository.save(task);
-        
+
         // Broadcast task assignment event
         TaskEvent event = TaskEvent.builder()
                 .type(TaskEvent.EventType.TASK_ASSIGNED)
@@ -261,9 +261,9 @@ public class TaskServiceImpl implements TaskService {
                 .payload(assignedTask)
                 .timestamp(LocalDateTime.now())
                 .build();
-        
+
         messagingTemplate.convertAndSend("/topic/board/" + assignedTask.getColumn().getBoard().getId(), event);
-        
+
         return assignedTask;
     }
 
@@ -275,9 +275,9 @@ public class TaskServiceImpl implements TaskService {
         UUID workspaceId = task.getColumn().getBoard().getWorkspace().getId();
         UUID userId = task.getCreatedBy().getId();
         String userName = task.getCreatedBy().getUsername();
-        
+
         taskRepository.delete(task);
-        
+
         // Broadcast task deletion event
         TaskEvent event = TaskEvent.builder()
                 .type(TaskEvent.EventType.TASK_DELETED)
@@ -289,7 +289,7 @@ public class TaskServiceImpl implements TaskService {
                 .payload(null)
                 .timestamp(LocalDateTime.now())
                 .build();
-        
+
         messagingTemplate.convertAndSend("/topic/board/" + boardId, event);
     }
 }

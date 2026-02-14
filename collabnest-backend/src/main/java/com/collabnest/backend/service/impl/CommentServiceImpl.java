@@ -34,16 +34,16 @@ public class CommentServiceImpl implements CommentService {
     public Comment createComment(UUID entityId, String entityType, String content, UUID createdById) {
         User createdBy = userRepository.findById(createdById)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-        
+
         Comment comment = Comment.builder()
                 .entityId(entityId)
                 .entityType(entityType)
                 .content(content)
                 .createdBy(createdBy)
                 .build();
-        
+
         Comment savedComment = commentRepository.save(comment);
-        
+
         // Process mentions asynchronously after save
         List<UUID> mentionedUsers = notificationService.detectMentions(content);
         if (!mentionedUsers.isEmpty() && "document".equalsIgnoreCase(entityType)) {
@@ -53,10 +53,9 @@ public class CommentServiceImpl implements CommentService {
                     null,
                     entityType,
                     entityId,
-                    "comment"
-            );
+                    "comment");
         }
-        
+
         return savedComment;
     }
 
@@ -73,17 +72,25 @@ public class CommentServiceImpl implements CommentService {
 
     @Override
     @Transactional
+    public Comment updateComment(UUID commentId, String content) {
+        Comment comment = getComment(commentId);
+        comment.setContent(content);
+        return commentRepository.save(comment);
+    }
+
+    @Override
+    @Transactional
     public void deleteComment(UUID commentId) {
         Comment comment = getComment(commentId);
         UUID entityId = comment.getEntityId();
         String entityType = comment.getEntityType();
         UUID userId = comment.getCreatedBy().getId();
         String userName = comment.getCreatedBy().getUsername();
-        
+
         commentRepository.delete(comment);
-        
+
         // Broadcast comment deletion event
-        if ("DOCUMENT".equals(entityType)) {
+        if ("document".equalsIgnoreCase(entityType)) {
             DocumentEvent event = DocumentEvent.builder()
                     .type(DocumentEvent.EventType.COMMENT_DELETED)
                     .documentId(entityId)
@@ -93,7 +100,7 @@ public class CommentServiceImpl implements CommentService {
                     .payload(null)
                     .timestamp(LocalDateTime.now())
                     .build();
-            
+
             messagingTemplate.convertAndSend("/topic/document/" + entityId, event);
         }
     }
