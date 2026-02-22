@@ -57,6 +57,8 @@ export default function DashboardPage() {
   const [showJoin, setShowJoin] = useState(false);
   const [newName, setNewName] = useState("");
   const [joinToken, setJoinToken] = useState("");
+  const [createError, setCreateError] = useState("");
+  const [joinError, setJoinError] = useState("");
 
   const {
     data: workspaces,
@@ -73,8 +75,12 @@ export default function DashboardPage() {
       useWorkspaceStore.getState().fetchWorkspaces();
       setShowCreate(false);
       setNewName("");
+      setCreateError("");
       setCurrentWorkspace(ws);
       router.push(`/workspace/${ws.id}/boards`);
+    },
+    onError: (err: Error) => {
+      setCreateError(err.message || "Failed to create workspace");
     },
   });
 
@@ -85,6 +91,10 @@ export default function DashboardPage() {
       useWorkspaceStore.getState().fetchWorkspaces();
       setShowJoin(false);
       setJoinToken("");
+      setJoinError("");
+    },
+    onError: (err: Error) => {
+      setJoinError(err.message || "Failed to join workspace");
     },
   });
 
@@ -246,15 +256,21 @@ export default function DashboardPage() {
       {/* Create workspace modal */}
       <Modal
         open={showCreate}
-        onClose={() => setShowCreate(false)}
+        onClose={() => { setShowCreate(false); setCreateError(""); }}
         title="Create workspace"
       >
         <form
           onSubmit={(e) => {
             e.preventDefault();
+            setCreateError("");
             createMutation.mutate(newName);
           }}
         >
+          {createError && (
+            <div className="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+              {createError}
+            </div>
+          )}
           <Input
             label="Workspace name"
             placeholder="e.g. Product Team, Marketing"
@@ -285,15 +301,21 @@ export default function DashboardPage() {
       {/* Join workspace modal */}
       <Modal
         open={showJoin}
-        onClose={() => setShowJoin(false)}
+        onClose={() => { setShowJoin(false); setJoinError(""); }}
         title="Join workspace"
       >
         <form
           onSubmit={(e) => {
             e.preventDefault();
+            setJoinError("");
             joinMutation.mutate(joinToken);
           }}
         >
+          {joinError && (
+            <div className="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+              {joinError}
+            </div>
+          )}
           <Input
             label="Invite token"
             placeholder="Paste the invite token here"

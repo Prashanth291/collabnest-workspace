@@ -53,8 +53,10 @@ public class ChatServiceImpl implements ChatService {
     @Transactional
     public DirectChat getOrCreateDirectChat(UUID userOneId, UUID userTwoId) {
         // Ensure consistent ordering (user_one_id < user_two_id per DB constraint)
-        UUID smallerId = userOneId.compareTo(userTwoId) < 0 ? userOneId : userTwoId;
-        UUID largerId = userOneId.compareTo(userTwoId) < 0 ? userTwoId : userOneId;
+        // Use string comparison to match PostgreSQL's lexicographic UUID ordering
+        // (Java's UUID.compareTo uses signed long arithmetic which differs)
+        UUID smallerId = userOneId.toString().compareTo(userTwoId.toString()) < 0 ? userOneId : userTwoId;
+        UUID largerId = userOneId.toString().compareTo(userTwoId.toString()) < 0 ? userTwoId : userOneId;
 
         return directChatRepository.findByUsers(smallerId, largerId)
                 .orElseGet(() -> {
@@ -104,6 +106,7 @@ public class ChatServiceImpl implements ChatService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Page<ChatMessage> getChatMessages(UUID chatId, Pageable pageable) {
         return chatMessageRepository.findByChatIdOrderByCreatedAtDesc(chatId, pageable);
     }

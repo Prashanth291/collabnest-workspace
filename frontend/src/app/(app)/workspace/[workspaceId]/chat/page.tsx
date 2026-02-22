@@ -33,18 +33,21 @@ export default function ChatPage() {
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const [selectedDM, setSelectedDM] = useState<ChatResponse | null>(null);
+  const [dmError, setDmError] = useState("");
 
   // Get workspace chat
-  const { data: workspaceChat } = useQuery({
+  const { data: workspaceChat, error: workspaceChatError } = useQuery({
     queryKey: ["workspace-chat", workspaceId],
     queryFn: () => api.chat.getWorkspaceChat(workspaceId),
     enabled: !!workspaceId,
+    retry: 1,
   });
 
   // Get direct chats
   const { data: directChats } = useQuery({
     queryKey: ["direct-chats"],
     queryFn: () => api.chat.listDirectChats(),
+    retry: 1,
   });
 
   // Determine active chat
@@ -61,9 +64,10 @@ export default function ChatPage() {
     refetchInterval: 5000,
   });
 
-  const messages = messagesPage?.content || [];
+  const messages = [...(messagesPage?.content || [])].reverse();
 
   // Send message
+  const [sendError, setSendError] = useState("");
   const sendMutation = useMutation({
     mutationFn: (content: string) =>
       api.chat.sendMessage(currentChatId!, { content }),
@@ -72,6 +76,10 @@ export default function ChatPage() {
         queryKey: ["chat-messages", currentChatId],
       });
       setMessage("");
+      setSendError("");
+    },
+    onError: (err: Error) => {
+      setSendError(err.message || "Failed to send message");
     },
   });
 
@@ -89,12 +97,14 @@ export default function ChatPage() {
 
   const startDM = async (userId: string) => {
     try {
+      setDmError("");
       const chat = await api.chat.getDirectChat(userId);
       setSelectedDM(chat);
       setActiveTab("direct");
       queryClient.invalidateQueries({ queryKey: ["direct-chats"] });
-    } catch (error) {
-      console.error("Failed to start DM:", error);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to start conversation";
+      setDmError(msg);
     }
   };
 
@@ -189,6 +199,11 @@ export default function ChatPage() {
                     </button>
                   ))}
               </div>
+              {dmError && (
+                <div className="mx-2 mt-1 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-600">
+                  {dmError}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -232,7 +247,13 @@ export default function ChatPage() {
 
         {/* Messages */}
         <div className="flex-1 overflow-y-auto px-5 py-4">
-          {!currentChatId ? (
+          {workspaceChatError && activeTab === "workspace" ? (
+            <EmptyState
+              icon={<MessageSquare className="h-8 w-8" />}
+              title="Unable to load chat"
+              description={(workspaceChatError as Error).message || "Failed to initialize workspace chat. Please try again."}
+            />
+          ) : !currentChatId ? (
             <EmptyState
               icon={<MessageSquare className="h-8 w-8" />}
               title="No chat selected"
@@ -341,6 +362,11 @@ export default function ChatPage() {
         {/* Input */}
         {currentChatId && (
           <div className="px-4 py-3 border-t border-slate-100">
+            {sendError && (
+              <div className="mb-2 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-700">
+                {sendError}
+              </div>
+            )}
             <form onSubmit={handleSend} className="flex gap-2">
               <input
                 value={message}
