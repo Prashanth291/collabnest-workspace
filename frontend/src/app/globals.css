@@ -1,0 +1,114 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-background: #ffffff;
+  --color-foreground: #0f172a;
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+}
+
+/*
+ * All custom styles MUST be inside @layer to work with Tailwind CSS v4.
+ * Tailwind v4 uses CSS cascade layers — unlayered styles always beat
+ * layered utilities (like mx-auto, p-6, etc.), breaking layout.
+ */
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background: #ffffff;
+    color: #0f172a;
+    font-family: "Inter", system-ui, -apple-system, sans-serif;
+    line-height: 1.6;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 3px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+  }
+
+  /* Focus */
+  :focus-visible {
+    outline: 2px solid #6366f1;
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  /* Selection */
+  ::selection {
+    background: #c7d2fe;
+    color: #312e81;
+  }
+}
+
+/* Keyframes don't participate in cascade layers, safe outside */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slide-in-right {
+  from { opacity: 0; transform: translateX(16px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes landing-fade-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Utility classes must be in @layer utilities so they have correct priority */
+@layer utilities {
+  .animate-fade-in {
+    animation: fade-in 0.2s ease-out;
+  }
+
+  .animate-slide-up {
+    animation: slide-up 0.3s ease-out;
+  }
+
+  .animate-slide-in-right {
+    animation: slide-in-right 0.3s ease-out;
+  }
+
+  .animate-scale-in {
+    animation: scale-in 0.2s ease-out;
+  }
+
+  .landing-fade-up {
+    animation: landing-fade-up 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  .landing-delay-1 { animation-delay: 0.1s; }
+  .landing-delay-2 { animation-delay: 0.2s; }
+  .landing-delay-3 { animation-delay: 0.35s; }
+  .landing-delay-4 { animation-delay: 0.5s; }
+}
