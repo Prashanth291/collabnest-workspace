@@ -34,7 +34,8 @@ interface NavItem {
 }
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const { user, isAuthenticated, logout } = useAuthStore();
+  const { user, isAuthenticated, logout, isHydrated, isLoading } =
+    useAuthStore();
   const { workspaces, currentWorkspace, setCurrentWorkspace, fetchWorkspaces } =
     useWorkspaceStore();
   const router = useRouter();
@@ -43,10 +44,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   // Redirect if not authenticated
   useEffect(() => {
-    if (!isAuthenticated && !useAuthStore.getState().isLoading) {
+    if (isHydrated && !isAuthenticated && !isLoading) {
       router.push("/login");
     }
-  }, [isAuthenticated, router]);
+  }, [isAuthenticated, isHydrated, isLoading, router]);
 
   // Load workspaces
   useEffect(() => {
@@ -72,6 +73,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     refetchInterval: 30_000,
   });
 
+  if (!isHydrated) return null;
   if (!isAuthenticated || !user) return null;
 
   const workspaceId = currentWorkspace?.id;
@@ -382,9 +384,27 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 )}
               </Link>
 
-              {/* Avatar */}
+              {/* Avatar menu */}
               <div className="hidden sm:block">
-                <Avatar name={user.name} size="sm" />
+                <Dropdown
+                  align="right"
+                  trigger={
+                    <button className="flex items-center gap-2 rounded-full hover:bg-slate-50 p-1 transition-colors">
+                      <Avatar name={user.name} size="sm" />
+                      <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
+                    </button>
+                  }
+                >
+                  <DropdownItem onClick={() => router.push("/profile")}
+                    >
+                    <Settings className="h-4 w-4 text-slate-400" />
+                    Profile settings
+                  </DropdownItem>
+                  <DropdownItem onClick={handleLogout} className="text-red-600">
+                    <LogOut className="h-4 w-4" />
+                    Sign out
+                  </DropdownItem>
+                </Dropdown>
               </div>
             </div>
           </div>

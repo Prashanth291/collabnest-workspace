@@ -84,32 +84,62 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
             );
         }
 
-        AuthProvider authProvider = AuthProvider.valueOf(registrationId.toUpperCase());
-        Optional<User> userOptional = userRepository.findByAuthProviderAndProviderId(authProvider, oAuth2UserInfo.getId());
+        // 1. Try to find user by provider-specific ID
+        Optional<User> userOptional = findByProviderId(registrationId, oAuth2UserInfo.getId());
 
         User user;
         if (userOptional.isPresent()) {
-            user = userOptional.get();
-            user = updateExistingUser(user, oAuth2UserInfo);
+            // Returning user via the same OAuth provider
+            user = updateExistingUser(userOptional.get(), oAuth2UserInfo);
         } else {
-            user = registerNewUser(oAuth2UserRequest, oAuth2UserInfo);
+            // 2. Try to find by email (account linking)
+            Optional<User> emailUser = userRepository.findByEmail(oAuth2UserInfo.getEmail());
+            if (emailUser.isPresent()) {
+                // Link this OAuth provider to the existing account
+                user = linkProviderToUser(emailUser.get(), registrationId, oAuth2UserInfo);
+                logger.info("Linked {} provider to existing account: {}", registrationId, user.getEmail());
+            } else {
+                // 3. Brand-new user
+                user = registerNewUser(oAuth2UserRequest, oAuth2UserInfo);
+            }
         }
 
         return UserPrincipal.create(user, oAuth2User.getAttributes());
     }
 
+    /**
+     * Find user by the provider-specific ID column (github_id / google_id).
+     */
+    private Optional<User> findByProviderId(String registrationId, String providerId) {
+        return switch (registrationId.toLowerCase()) {
+            case "github" -> userRepository.findByGithubId(providerId);
+            case "google" -> userRepository.findByGoogleId(providerId);
+            default -> userRepository.findByAuthProviderAndProviderId(
+                    AuthProvider.valueOf(registrationId.toUpperCase()), providerId);
+        };
+    }
+
+    /**
+     * Link an OAuth provider to an existing user account (same email).
+     */
+    private User linkProviderToUser(User user, String registrationId, OAuth2UserInfo oAuth2UserInfo) {
+        switch (registrationId.toLowerCase()) {
+            case "github" -> user.setGithubId(oAuth2UserInfo.getId());
+            case "google" -> user.setGoogleId(oAuth2UserInfo.getId());
+        }
+        // Also update legacy columns to the most recent provider
+        user.setAuthProvider(AuthProvider.valueOf(registrationId.toUpperCase()));
+        user.setProviderId(oAuth2UserInfo.getId());
+        // Update name if it was empty
+        if (!StringUtils.hasText(user.getName())) {
+            user.setName(oAuth2UserInfo.getName());
+        }
+        return userRepository.save(user);
+    }
+
     private User registerNewUser(OAuth2UserRequest oAuth2UserRequest, OAuth2UserInfo oAuth2UserInfo) {
         String registrationId = oAuth2UserRequest.getClientRegistration().getRegistrationId();
         AuthProvider authProvider = AuthProvider.valueOf(registrationId.toUpperCase());
-
-        // Check if email already exists with different provider
-        Optional<User> existingUser = userRepository.findByEmail(oAuth2UserInfo.getEmail());
-        if (existingUser.isPresent()) {
-            throw new OAuth2AuthenticationProcessingException(
-                    "Email already registered with " + existingUser.get().getAuthProvider() + 
-                    ". Please use " + existingUser.get().getAuthProvider() + " to login."
-            );
-        }
 
         User user = new User();
         user.setEmail(oAuth2UserInfo.getEmail());
@@ -118,6 +148,12 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         user.setProviderId(oAuth2UserInfo.getId());
         user.setRole(UserRole.USER);
         user.setEnabled(true);
+
+        // Set provider-specific ID column
+        switch (registrationId.toLowerCase()) {
+            case "github" -> user.setGithubId(oAuth2UserInfo.getId());
+            case "google" -> user.setGoogleId(oAuth2UserInfo.getId());
+        }
         
         // Generate username from email (before @)
         String username = oAuth2UserInfo.getEmail().split("@")[0];

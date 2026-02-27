@@ -32,24 +32,38 @@ public class AuthService {
     }
 
     public AuthResponse register(RegisterRequest request) {
-        // Check for duplicate email
-        if (userRepository.findByEmail(request.email()).isPresent()) {
-            throw new DuplicateResourceException("Email already registered");
-        }
-        
         // Check for duplicate username
         if (userRepository.findByUsername(request.username()).isPresent()) {
             throw new DuplicateResourceException("Username already taken");
         }
-        
-        User user = new User();
-        user.setEmail(request.email());
-        user.setUsername(request.username());
-        user.setName(request.name());
-        user.setPasswordHash(passwordEncoder.encode(request.password()));
-        user.setAuthProvider(AuthProvider.LOCAL);
-        user.setRole(UserRole.USER);
-        user.setEnabled(true);
+
+        // Check if email already exists
+        var existingUser = userRepository.findByEmail(request.email());
+        User user;
+
+        if (existingUser.isPresent()) {
+            user = existingUser.get();
+            // If the user already has a password, it's a true duplicate
+            if (user.hasPassword()) {
+                throw new DuplicateResourceException("Email already registered");
+            }
+            // OAuth-only account — link a password to it
+            user.setPasswordHash(passwordEncoder.encode(request.password()));
+            user.setName(request.name());
+            user.setUsername(request.username());
+            if (user.getAuthProvider() == null) {
+                user.setAuthProvider(AuthProvider.LOCAL);
+            }
+        } else {
+            user = new User();
+            user.setEmail(request.email());
+            user.setUsername(request.username());
+            user.setName(request.name());
+            user.setPasswordHash(passwordEncoder.encode(request.password()));
+            user.setAuthProvider(AuthProvider.LOCAL);
+            user.setRole(UserRole.USER);
+            user.setEnabled(true);
+        }
 
         userRepository.save(user);
 
@@ -65,6 +79,14 @@ public class AuthService {
     public AuthResponse login(LoginRequest request) {
         User user = userRepository.findByEmailOrUsername(request.identifier(), request.identifier())
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        // Guard: OAuth-only users have no password set
+        if (!user.hasPassword()) {
+            String provider = user.getAuthProvider() != null ? user.getAuthProvider().name() : "OAuth";
+            throw new UnauthorizedException(
+                "This account uses " + provider + " sign-in. Please log in with " + provider +
+                ", or set a password in your profile settings.");
+        }
 
         if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
             throw new UnauthorizedException("Invalid credentials");

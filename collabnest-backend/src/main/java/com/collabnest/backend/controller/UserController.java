@@ -34,7 +34,8 @@ public class UserController {
         User user = userService.updateProfile(
                 userPrincipal.getUserId(),
                 request.name(),
-                request.email());
+                request.email(),
+                request.password());
         return ResponseEntity.ok(toUserResponse(user));
     }
 

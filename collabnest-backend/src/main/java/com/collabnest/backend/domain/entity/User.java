@@ -43,6 +43,12 @@ public class User {
     @Column(name = "provider_id")
     private String providerId;
 
+    @Column(name = "github_id")
+    private String githubId;
+
+    @Column(name = "google_id")
+    private String googleId;
+
     @Enumerated(EnumType.STRING)
     private UserRole role;
 
@@ -53,4 +59,9 @@ public class User {
     @CreationTimestamp
     @Column(name = "created_at")
     private Instant createdAt;
+
+    /** Returns true if user can sign in with email + password. */
+    public boolean hasPassword() {
+        return passwordHash != null && !passwordHash.isBlank();
+    }
 }

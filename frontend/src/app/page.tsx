@@ -16,7 +16,7 @@ import {
 import { Button } from "@/components/ui";
 
 export default function LandingPage() {
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, logout } = useAuthStore();
   const router = useRouter();
 
   React.useEffect(() => {
@@ -34,18 +34,40 @@ export default function LandingPage() {
           CollabNest
         </Link>
         <div className="flex items-center gap-3">
-          <Link
-            href="/login"
-            className="text-sm text-slate-600 hover:text-slate-900 transition-colors"
-          >
-            Log in
-          </Link>
-          <Link
-            href="/register"
-            className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
-          >
-            Get started <ArrowRight className="w-3.5 h-3.5" />
-          </Link>
+          {isAuthenticated ? (
+            <>
+              <button
+                onClick={() => router.push("/dashboard")}
+                className="text-sm text-slate-600 hover:text-slate-900 transition-colors"
+              >
+                Dashboard
+              </button>
+              <button
+                onClick={() => {
+                  logout();
+                  router.push("/login");
+                }}
+                className="text-sm text-red-600 hover:text-red-700 transition-colors"
+              >
+                Log out
+              </button>
+            </>
+          ) : (
+            <>
+              <Link
+                href="/login"
+                className="text-sm text-slate-600 hover:text-slate-900 transition-colors"
+              >
+                Log in
+              </Link>
+              <Link
+                href="/register"
+                className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+              >
+                Get started <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </>
+          )}
         </div>
       </nav>
 

@@ -43,17 +43,20 @@
 ## ✨ Features
 
 ### Workspaces
+
 - Create and manage **multiple workspaces** for different teams or projects
 - Invite members via email with **unique invite tokens**
 - Role-based hierarchy — **Owner · Admin · Member · Viewer** — with granular permission control
 - Real-time **activity feed** to track workspace events
 
 ### Kanban Boards
+
 - Create multiple boards per workspace with **customizable columns** (To Do, In Progress, Review, Done, etc.)
 - **Drag-and-drop** support for reordering tasks, columns, and boards
 - Visual task organization with priority color coding
 
 ### Task Management
+
 - Create tasks with title, description, **priority levels** (Low / Medium / High / Critical), and due dates
 - **Assign** tasks to one or more team members
 - Move tasks across columns and positions with real-time sync
@@ -63,6 +66,7 @@
 - **Optimistic concurrency control** (versioned updates) to prevent conflicting edits
 
 ### Real-Time Chat
+
 - **Workspace chat** — group messaging for the entire team
 - **Direct messages** — private 1-on-1 conversations between members
 - **Link messages** to specific tasks or documents for contextual discussions
@@ -70,36 +74,43 @@
 - Powered by **WebSocket** with STOMP protocol and SockJS fallback
 
 ### Documents & Comments
+
 - Create and collaborate on rich documents within workspaces
 - Threaded **comments** for feedback and discussions
 - Bi-directional **document ↔ task linking** for traceability
 
 ### File Management
+
 - Upload and manage files within workspaces
 - Associate files with specific **tasks** or **documents**
 - Organized file listing with metadata
 
 ### Notifications
+
 - Real-time **push notifications** with read/unread tracking
 - Mark individual or all notifications as read
 - **Unread badge count** for instant visibility
 
 ### Activity Logs
+
 - Comprehensive **audit trail** across all workspace actions
 - Filter by user or view the full workspace feed
 - Personal activity dashboard
 
 ### Authentication & Security
+
 - **JWT-based** stateless authentication with refresh support
 - **OAuth2 social login** with Google and GitHub
 - Role-based access control at **global** and **workspace** levels
 - Secure WebSocket connections with **JWT handshake authentication**
 
 ### Admin Dashboard
+
 - Manage all users — view, update roles, enable/disable, or remove
 - Platform-wide oversight and summary tools
 
 ### User Profiles
+
 - View and update personal profile information
 - Personalized dashboard with workspace overview
 
@@ -159,13 +170,13 @@
 
 ### Prerequisites
 
-| Tool         | Version  | Download                                         |
-|-------------|----------|--------------------------------------------------|
-| **Java**     | 21+      | [Eclipse Temurin](https://adoptium.net/)         |
-| **Maven**    | 3.9+     | [Apache Maven](https://maven.apache.org/)        |
-| **Node.js**  | 20+      | [Node.js](https://nodejs.org/)                   |
-| **npm**      | 10+      | Bundled with Node.js                             |
-| **PostgreSQL** | 15+    | [PostgreSQL](https://www.postgresql.org/download/) |
+| Tool           | Version | Download                                           |
+| -------------- | ------- | -------------------------------------------------- |
+| **Java**       | 21+     | [Eclipse Temurin](https://adoptium.net/)           |
+| **Maven**      | 3.9+    | [Apache Maven](https://maven.apache.org/)          |
+| **Node.js**    | 20+     | [Node.js](https://nodejs.org/)                     |
+| **npm**        | 10+     | Bundled with Node.js                               |
+| **PostgreSQL** | 15+     | [PostgreSQL](https://www.postgresql.org/download/) |
 
 ### 1. Database Setup
 
@@ -301,99 +312,99 @@ All API endpoints are served from `http://localhost:8080`. Authentication is req
 
 ### Authentication
 
-| Method | Endpoint                     | Description                    |
-|--------|------------------------------|--------------------------------|
-| POST   | `/api/auth/register`         | Register a new user            |
-| POST   | `/api/auth/login`            | Login and receive JWT token    |
+| Method | Endpoint                           | Description                           |
+| ------ | ---------------------------------- | ------------------------------------- |
+| POST   | `/api/auth/register`               | Register a new user                   |
+| POST   | `/api/auth/login`                  | Login and receive JWT token           |
 | GET    | `/oauth2/authorization/{provider}` | Initiate OAuth2 login (Google/GitHub) |
 
 ### Workspaces
 
-| Method | Endpoint                                      | Description                     |
-|--------|-----------------------------------------------|---------------------------------|
-| POST   | `/api/workspaces`                             | Create a workspace              |
-| GET    | `/api/workspaces`                             | List user's workspaces          |
-| GET    | `/api/workspaces/{id}`                        | Get workspace details           |
-| PUT    | `/api/workspaces/{id}`                        | Update workspace                |
-| DELETE | `/api/workspaces/{id}`                        | Delete workspace                |
-| POST   | `/api/workspaces/{id}/invite`                 | Generate invite token           |
-| POST   | `/api/workspaces/join`                        | Join via invite token           |
-| GET    | `/api/workspaces/{id}/members`                | List members                    |
-| PUT    | `/api/workspaces/{id}/members/{userId}/role`  | Update member role              |
-| DELETE | `/api/workspaces/{id}/members/{userId}`       | Remove member                   |
+| Method | Endpoint                                     | Description            |
+| ------ | -------------------------------------------- | ---------------------- |
+| POST   | `/api/workspaces`                            | Create a workspace     |
+| GET    | `/api/workspaces`                            | List user's workspaces |
+| GET    | `/api/workspaces/{id}`                       | Get workspace details  |
+| PUT    | `/api/workspaces/{id}`                       | Update workspace       |
+| DELETE | `/api/workspaces/{id}`                       | Delete workspace       |
+| POST   | `/api/workspaces/{id}/invite`                | Generate invite token  |
+| POST   | `/api/workspaces/join`                       | Join via invite token  |
+| GET    | `/api/workspaces/{id}/members`               | List members           |
+| PUT    | `/api/workspaces/{id}/members/{userId}/role` | Update member role     |
+| DELETE | `/api/workspaces/{id}/members/{userId}`      | Remove member          |
 
 ### Boards & Columns
 
-| Method | Endpoint                                                        | Description              |
-|--------|-----------------------------------------------------------------|--------------------------|
-| POST   | `/api/workspaces/{workspaceId}/boards`                         | Create board             |
-| GET    | `/api/workspaces/{workspaceId}/boards`                         | List boards              |
-| PUT    | `/api/workspaces/{workspaceId}/boards/{boardId}`               | Update board             |
-| DELETE | `/api/workspaces/{workspaceId}/boards/{boardId}`               | Delete board             |
-| POST   | `/api/workspaces/{workspaceId}/boards/{boardId}/columns`       | Create column            |
-| PUT    | `/api/workspaces/{workspaceId}/columns/{columnId}`             | Update column            |
-| DELETE | `/api/workspaces/{workspaceId}/columns/{columnId}`             | Delete column            |
+| Method | Endpoint                                                 | Description   |
+| ------ | -------------------------------------------------------- | ------------- |
+| POST   | `/api/workspaces/{workspaceId}/boards`                   | Create board  |
+| GET    | `/api/workspaces/{workspaceId}/boards`                   | List boards   |
+| PUT    | `/api/workspaces/{workspaceId}/boards/{boardId}`         | Update board  |
+| DELETE | `/api/workspaces/{workspaceId}/boards/{boardId}`         | Delete board  |
+| POST   | `/api/workspaces/{workspaceId}/boards/{boardId}/columns` | Create column |
+| PUT    | `/api/workspaces/{workspaceId}/columns/{columnId}`       | Update column |
+| DELETE | `/api/workspaces/{workspaceId}/columns/{columnId}`       | Delete column |
 
 ### Tasks
 
-| Method | Endpoint                                                                  | Description              |
-|--------|---------------------------------------------------------------------------|--------------------------|
-| POST   | `/api/workspaces/{workspaceId}/columns/{columnId}/tasks`                 | Create task              |
-| GET    | `/api/workspaces/{workspaceId}/columns/{columnId}/tasks`                 | List tasks in column     |
-| PUT    | `/api/workspaces/{workspaceId}/columns/{columnId}/tasks/{taskId}`        | Update task              |
-| DELETE | `/api/workspaces/{workspaceId}/columns/{columnId}/tasks/{taskId}`        | Delete task              |
-| PUT    | `/api/workspaces/{workspaceId}/tasks/{taskId}/move`                      | Move task across columns |
-| POST   | `/api/workspaces/{workspaceId}/tasks/{taskId}/assign`                    | Assign members           |
+| Method | Endpoint                                                          | Description              |
+| ------ | ----------------------------------------------------------------- | ------------------------ |
+| POST   | `/api/workspaces/{workspaceId}/columns/{columnId}/tasks`          | Create task              |
+| GET    | `/api/workspaces/{workspaceId}/columns/{columnId}/tasks`          | List tasks in column     |
+| PUT    | `/api/workspaces/{workspaceId}/columns/{columnId}/tasks/{taskId}` | Update task              |
+| DELETE | `/api/workspaces/{workspaceId}/columns/{columnId}/tasks/{taskId}` | Delete task              |
+| PUT    | `/api/workspaces/{workspaceId}/tasks/{taskId}/move`               | Move task across columns |
+| POST   | `/api/workspaces/{workspaceId}/tasks/{taskId}/assign`             | Assign members           |
 
 ### Documents
 
-| Method | Endpoint                                                               | Description              |
-|--------|------------------------------------------------------------------------|--------------------------|
-| POST   | `/api/workspaces/{workspaceId}/documents`                             | Create document          |
-| GET    | `/api/workspaces/{workspaceId}/documents`                             | List documents           |
-| GET    | `/api/workspaces/{workspaceId}/documents/{documentId}`                | Get document             |
-| PUT    | `/api/workspaces/{workspaceId}/documents/{documentId}`                | Update document          |
-| DELETE | `/api/workspaces/{workspaceId}/documents/{documentId}`                | Delete document          |
+| Method | Endpoint                                               | Description     |
+| ------ | ------------------------------------------------------ | --------------- |
+| POST   | `/api/workspaces/{workspaceId}/documents`              | Create document |
+| GET    | `/api/workspaces/{workspaceId}/documents`              | List documents  |
+| GET    | `/api/workspaces/{workspaceId}/documents/{documentId}` | Get document    |
+| PUT    | `/api/workspaces/{workspaceId}/documents/{documentId}` | Update document |
+| DELETE | `/api/workspaces/{workspaceId}/documents/{documentId}` | Delete document |
 
 ### Chat
 
-| Method | Endpoint                                            | Description                  |
-|--------|-----------------------------------------------------|------------------------------|
-| GET    | `/api/chat/workspace/{workspaceId}`                | Get workspace chat           |
-| GET    | `/api/chat/direct/{userId}`                        | Get/create direct chat       |
-| POST   | `/api/chat/{chatId}/messages`                      | Send message                 |
-| GET    | `/api/chat/{chatId}/messages`                      | Get messages (paginated)     |
-| GET    | `/api/chat/workspace/{workspaceId}/direct-chats`   | List direct chats            |
+| Method | Endpoint                                         | Description              |
+| ------ | ------------------------------------------------ | ------------------------ |
+| GET    | `/api/chat/workspace/{workspaceId}`              | Get workspace chat       |
+| GET    | `/api/chat/direct/{userId}`                      | Get/create direct chat   |
+| POST   | `/api/chat/{chatId}/messages`                    | Send message             |
+| GET    | `/api/chat/{chatId}/messages`                    | Get messages (paginated) |
+| GET    | `/api/chat/workspace/{workspaceId}/direct-chats` | List direct chats        |
 
 ### Files, Notifications & Activity
 
-| Method | Endpoint                                | Description                |
-|--------|-----------------------------------------|----------------------------|
-| POST   | `/api/workspaces/{workspaceId}/files`  | Upload file metadata       |
-| GET    | `/api/workspaces/{workspaceId}/files`  | List files                 |
-| DELETE | `/api/workspaces/{workspaceId}/files/{fileId}` | Delete file         |
-| GET    | `/api/notifications`                   | Get notifications          |
-| PUT    | `/api/notifications/{id}/read`         | Mark as read               |
-| PUT    | `/api/notifications/read-all`          | Mark all as read           |
-| GET    | `/api/activity/workspace/{workspaceId}`| Workspace activity log     |
-| GET    | `/api/activity/user/{userId}`          | User activity log          |
+| Method | Endpoint                                       | Description            |
+| ------ | ---------------------------------------------- | ---------------------- |
+| POST   | `/api/workspaces/{workspaceId}/files`          | Upload file metadata   |
+| GET    | `/api/workspaces/{workspaceId}/files`          | List files             |
+| DELETE | `/api/workspaces/{workspaceId}/files/{fileId}` | Delete file            |
+| GET    | `/api/notifications`                           | Get notifications      |
+| PUT    | `/api/notifications/{id}/read`                 | Mark as read           |
+| PUT    | `/api/notifications/read-all`                  | Mark all as read       |
+| GET    | `/api/activity/workspace/{workspaceId}`        | Workspace activity log |
+| GET    | `/api/activity/user/{userId}`                  | User activity log      |
 
 ### WebSocket Endpoints
 
-| Protocol | Endpoint               | Description                          |
-|----------|------------------------|--------------------------------------|
-| WS       | `/ws`                  | WebSocket handshake endpoint (SockJS)|
-| STOMP    | `/topic/chat/{chatId}` | Subscribe to chat messages           |
-| STOMP    | `/topic/notifications` | Subscribe to notifications           |
+| Protocol | Endpoint               | Description                           |
+| -------- | ---------------------- | ------------------------------------- |
+| WS       | `/ws`                  | WebSocket handshake endpoint (SockJS) |
+| STOMP    | `/topic/chat/{chatId}` | Subscribe to chat messages            |
+| STOMP    | `/topic/notifications` | Subscribe to notifications            |
 
 ### Admin
 
-| Method | Endpoint                     | Description              |
-|--------|------------------------------|--------------------------|
-| GET    | `/api/admin/users`           | List all users           |
-| PUT    | `/api/admin/users/{id}/role` | Update user role         |
-| PUT    | `/api/admin/users/{id}/status` | Enable/disable user   |
-| DELETE | `/api/admin/users/{id}`      | Delete user              |
+| Method | Endpoint                       | Description         |
+| ------ | ------------------------------ | ------------------- |
+| GET    | `/api/admin/users`             | List all users      |
+| PUT    | `/api/admin/users/{id}/role`   | Update user role    |
+| PUT    | `/api/admin/users/{id}/status` | Enable/disable user |
+| DELETE | `/api/admin/users/{id}`        | Delete user         |
 
 ---
 
@@ -433,27 +444,27 @@ The database consists of **19 tables** with **4 custom enum types**, managed by 
 <details>
 <summary><strong>View all tables</strong></summary>
 
-| Table | Description |
-|-------|-------------|
-| `users` | User accounts (UUID PK, email, username, password hash, OAuth provider, global role) |
-| `workspaces` | Collaborative workspaces with owner reference |
-| `workspace_members` | Many-to-many users ↔ workspaces with role (Owner/Admin/Member/Viewer) |
-| `boards` | Kanban boards per workspace |
-| `columns` | Ordered columns per board |
-| `tasks` | Task cards with priority (Low/Medium/High/Critical), due date, version |
-| `task_assignees` | Many-to-many tasks ↔ users |
-| `task_dependencies` | Task-to-task dependency relationships |
-| `task_comments` | Threaded comments on tasks |
-| `documents` | Rich text documents per workspace |
-| `document_comments` | Comments on documents |
-| `task_document_links` | Many-to-many tasks ↔ documents |
-| `chats` | Chat containers (Workspace or Direct type) |
-| `workspace_chats` | Links workspace to its group chat |
-| `direct_chats` | Links two users to a direct message chat |
-| `chat_messages` | Individual messages with optional entity links |
-| `activity_logs` | Audit trail (actor, entity type, action, timestamp) |
-| `notifications` | User notifications with type and read status |
-| `files` | File metadata (linked to workspace, task, or document) |
+| Table                 | Description                                                                          |
+| --------------------- | ------------------------------------------------------------------------------------ |
+| `users`               | User accounts (UUID PK, email, username, password hash, OAuth provider, global role) |
+| `workspaces`          | Collaborative workspaces with owner reference                                        |
+| `workspace_members`   | Many-to-many users ↔ workspaces with role (Owner/Admin/Member/Viewer)                |
+| `boards`              | Kanban boards per workspace                                                          |
+| `columns`             | Ordered columns per board                                                            |
+| `tasks`               | Task cards with priority (Low/Medium/High/Critical), due date, version               |
+| `task_assignees`      | Many-to-many tasks ↔ users                                                           |
+| `task_dependencies`   | Task-to-task dependency relationships                                                |
+| `task_comments`       | Threaded comments on tasks                                                           |
+| `documents`           | Rich text documents per workspace                                                    |
+| `document_comments`   | Comments on documents                                                                |
+| `task_document_links` | Many-to-many tasks ↔ documents                                                       |
+| `chats`               | Chat containers (Workspace or Direct type)                                           |
+| `workspace_chats`     | Links workspace to its group chat                                                    |
+| `direct_chats`        | Links two users to a direct message chat                                             |
+| `chat_messages`       | Individual messages with optional entity links                                       |
+| `activity_logs`       | Audit trail (actor, entity type, action, timestamp)                                  |
+| `notifications`       | User notifications with type and read status                                         |
+| `files`               | File metadata (linked to workspace, task, or document)                               |
 
 </details>
 
@@ -464,17 +475,17 @@ The database consists of **19 tables** with **4 custom enum types**, managed by 
 <details>
 <summary><strong>View application screenshots</strong></summary>
 
-| Screenshot | Description |
-|------------|-------------|
-| ![Register API](Screenshots/postman_register.png) | User Registration API |
-| ![Login API](Screenshots/postman_login.png) | User Login API |
-| ![JWT Token](Screenshots/get_users_bearer_token.png) | JWT Bearer Token Usage |
-| ![Workspace Created](Screenshots/workspace_created.png) | Workspace Creation |
-| ![Workspaces List](Screenshots/workspaces_list.png) | Workspaces Listing |
-| ![Workspace Detail](Screenshots/Workspace_by_id.png) | Workspace Detail View |
-| ![Board Created](Screenshots/board_created.png) | Board Creation |
-| ![Boards & Columns](Screenshots/boardscolumns.png) | Boards & Columns View |
-| ![Board List](Screenshots/List_boards.png) | Board Listing |
+| Screenshot                                              | Description            |
+| ------------------------------------------------------- | ---------------------- |
+| ![Register API](Screenshots/postman_register.png)       | User Registration API  |
+| ![Login API](Screenshots/postman_login.png)             | User Login API         |
+| ![JWT Token](Screenshots/get_users_bearer_token.png)    | JWT Bearer Token Usage |
+| ![Workspace Created](Screenshots/workspace_created.png) | Workspace Creation     |
+| ![Workspaces List](Screenshots/workspaces_list.png)     | Workspaces Listing     |
+| ![Workspace Detail](Screenshots/Workspace_by_id.png)    | Workspace Detail View  |
+| ![Board Created](Screenshots/board_created.png)         | Board Creation         |
+| ![Boards & Columns](Screenshots/boardscolumns.png)      | Boards & Columns View  |
+| ![Board List](Screenshots/List_boards.png)              | Board Listing          |
 
 </details>
 
@@ -494,14 +505,14 @@ Contributions are welcome! Please follow these steps:
 
 This project follows [Conventional Commits](https://www.conventionalcommits.org/):
 
-| Prefix     | Purpose                    |
-|-----------|----------------------------|
-| `feat:`    | New feature                |
-| `fix:`     | Bug fix                    |
-| `docs:`    | Documentation only         |
-| `refactor:`| Code restructuring         |
-| `test:`    | Adding/updating tests      |
-| `chore:`   | Maintenance tasks          |
+| Prefix      | Purpose               |
+| ----------- | --------------------- |
+| `feat:`     | New feature           |
+| `fix:`      | Bug fix               |
+| `docs:`     | Documentation only    |
+| `refactor:` | Code restructuring    |
+| `test:`     | Adding/updating tests |
+| `chore:`    | Maintenance tasks     |
 
 ---
 

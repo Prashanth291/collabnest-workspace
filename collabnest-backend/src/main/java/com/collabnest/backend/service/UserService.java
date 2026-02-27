@@ -3,6 +3,7 @@ package com.collabnest.backend.service;
 import com.collabnest.backend.domain.entity.User;
 import com.collabnest.backend.domain.enums.UserRole;
 import com.collabnest.backend.repository.UserRepository;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -12,9 +13,11 @@ import java.util.UUID;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
-    public UserService(UserRepository userRepository) {
+    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     public List<User> getAllUsers() {
@@ -46,12 +49,19 @@ public class UserService {
     }
 
     public User updateProfile(UUID userId, String name, String email) {
+        return updateProfile(userId, name, email, null);
+    }
+
+    public User updateProfile(UUID userId, String name, String email, String password) {
         User user = getUserById(userId);
         if (name != null && !name.isBlank()) {
             user.setName(name);
         }
         if (email != null && !email.isBlank()) {
             user.setEmail(email);
+        }
+        if (password != null && !password.isBlank()) {
+            user.setPasswordHash(passwordEncoder.encode(password));
         }
         return userRepository.save(user);
     }
