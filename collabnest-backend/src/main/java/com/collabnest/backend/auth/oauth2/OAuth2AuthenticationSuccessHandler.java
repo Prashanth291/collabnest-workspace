@@ -2,6 +2,8 @@ package com.collabnest.backend.auth.oauth2;
 
 import com.collabnest.backend.auth.jwt.JwtService;
 import com.collabnest.backend.domain.entity.User;
+import com.collabnest.backend.domain.enums.AuthProvider;
+import com.collabnest.backend.domain.enums.UserRole;
 import com.collabnest.backend.exception.OAuth2AuthenticationProcessingException;
 import com.collabnest.backend.repository.UserRepository;
 import com.collabnest.backend.security.UserPrincipal;
@@ -73,9 +75,9 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
                 throw new OAuth2AuthenticationProcessingException("Email not found from OAuth2 provider");
             }
             
-            // Find or create user
+            // Find or create user (handles Google OIDC where CustomOAuth2UserService is not invoked)
             user = userRepository.findByEmail(email)
-                    .orElseThrow(() -> new OAuth2AuthenticationProcessingException("User not found"));
+                    .orElseGet(() -> registerOAuth2User(oauth2User, email, name));
         } else {
             throw new OAuth2AuthenticationProcessingException("Unsupported principal type: " + principal.getClass());
         }
@@ -91,5 +93,36 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
                 .encode()
                 .build()
                 .toUriString();
+    }
+
+    /**
+     * Registers a new user from OAuth2 data when CustomOAuth2UserService was not invoked
+     * (e.g., Google OIDC uses OidcUserService, not our CustomOAuth2UserService).
+     */
+    private User registerOAuth2User(org.springframework.security.oauth2.core.user.OAuth2User oauth2User, String email, String name) {
+        User newUser = new User();
+        newUser.setEmail(email);
+        newUser.setName(name != null ? name : email.split("@")[0]);
+        newUser.setRole(UserRole.USER);
+        newUser.setEnabled(true);
+
+        // Detect provider from attributes
+        String sub = oauth2User.getAttribute("sub"); // Google sets "sub"
+        if (sub != null) {
+            newUser.setAuthProvider(AuthProvider.GOOGLE);
+            newUser.setProviderId(sub);
+            newUser.setGoogleId(sub);
+        }
+
+        // Generate unique username
+        String username = email.split("@")[0];
+        String originalUsername = username;
+        int counter = 1;
+        while (userRepository.findByUsername(username).isPresent()) {
+            username = originalUsername + counter++;
+        }
+        newUser.setUsername(username);
+
+        return userRepository.save(newUser);
     }
 }
