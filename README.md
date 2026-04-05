@@ -4,19 +4,43 @@
 
 ### Real-Time Collaborative Workspace & Project Management Platform
 
-[![Java](https://img.shields.io/badge/Java-21-ED8B00?style=flat&logo=openjdk&logoColor=white)](https://openjdk.org/)
-[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.0.2-6DB33F?style=flat&logo=springboot&logoColor=white)](https://spring.io/projects/spring-boot)
-[![Next.js](https://img.shields.io/badge/Next.js-16-000000?style=flat&logo=nextdotjs&logoColor=white)](https://nextjs.org/)
-[![React](https://img.shields.io/badge/React-19-61DAFB?style=flat&logo=react&logoColor=black)](https://react.dev/)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?style=flat&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=flat&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+<p>
+  <a href="https://openjdk.org/">
+    <img src="https://img.shields.io/badge/Java-21-ED8B00?style=flat&logo=openjdk&logoColor=white" alt="Java 21" />
+  </a>
+  <a href="https://spring.io/projects/spring-boot">
+    <img src="https://img.shields.io/badge/Spring%20Boot-4.0.2-6DB33F?style=flat&logo=springboot&logoColor=white" alt="Spring Boot 4.0.2" />
+  </a>
+  <a href="https://nextjs.org/">
+    <img src="https://img.shields.io/badge/Next.js-16-000000?style=flat&logo=nextdotjs&logoColor=white" alt="Next.js 16" />
+  </a>
+  <a href="https://react.dev/">
+    <img src="https://img.shields.io/badge/React-19-61DAFB?style=flat&logo=react&logoColor=black" alt="React 19" />
+  </a>
+  <a href="https://www.postgresql.org/">
+    <img src="https://img.shields.io/badge/PostgreSQL-16-4169E1?style=flat&logo=postgresql&logoColor=white" alt="PostgreSQL 16" />
+  </a>
+  <a href="https://www.typescriptlang.org/">
+    <img src="https://img.shields.io/badge/TypeScript-5-3178C6?style=flat&logo=typescript&logoColor=white" alt="TypeScript 5" />
+  </a>
+  <a href="LICENSE">
+    <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="MIT License" />
+  </a>
+</p>
 
-**CollabNest** unifies task management, Kanban boards, real-time messaging, document collaboration, and file sharing into a single role-based workspace — so your team can stop context-switching and start shipping.
-
-[Features](#-features) · [Tech Stack](#-tech-stack) · [Getting Started](#-getting-started) · [Architecture](#-architecture) · [API Reference](#-api-reference) · [Contributing](#-contributing) · [License](#-license)
+<p>
+  <strong>CollabNest</strong> unifies task management, Kanban boards, real-time messaging, document collaboration, and file sharing into a single role-based workspace — so your team can stop context-switching and start shipping.
+</p>
 
 </div>
+
+---
+
+<p align="left">
+  <a href="https://collabnest.dev">
+    <strong>👉 Live Demo 🌐</strong>
+  </a>
+</p>
 
 ---
 
@@ -163,6 +187,18 @@
 │            Schema managed by Flyway (16 migrations)         │
 └─────────────────────────────────────────────────────────────┘
 ```
+---
+
+## 🌐 Deployment
+
+CollabNest is architected for high availability and security using AWS cloud infrastructure.
+
+- **Frontend:** Hosted on **AWS Amplify** with automated CI/CD from the `main` branch.
+- **Backend API:** Deployed on an **AWS EC2** instance (Ubuntu) using a **Spring Boot** executable JAR.
+- **Reverse Proxy:** **Nginx** is configured as a reverse proxy with **SSL/TLS encryption** via Let's Encrypt.
+- **Database:** **AWS RDS (PostgreSQL)** provides a managed, scalable relational database.
+- **Domain:** Custom domain managed via **Name.com** with specialized DNS routing for the API (`api.collabnest.dev`).
+
 
 ---
 
@@ -308,7 +344,10 @@ CollabNest/
 
 ## 📡 API Reference
 
-All API endpoints are served from `http://localhost:8080`. Authentication is required for most endpoints via `Authorization: Bearer <JWT>` header.
+The production API is served from **`https://api.collabnest.dev`**. 
+For local development, the API is served from `http://localhost:8080`. 
+
+Authentication is required for most endpoints via `Authorization: Bearer <JWT>` header.
 
 ### Authentication
 
@@ -490,6 +529,15 @@ The database consists of **19 tables** with **4 custom enum types**, managed by 
 </details>
 
 ---
+
+### Production Execution (EC2)
+To run the backend in a production environment with environment variables:
+```bash
+nohup java -jar target/collabnest-backend-0.0.1-SNAPSHOT.jar \
+  --server.forward-headers-strategy=FRAMEWORK \
+  --spring.datasource.url=${DB_URL} \
+  --GOOGLE_CLIENT_ID=${GOOGLE_ID} \
+  --OAUTH2_REDIRECT_URI=[https://collabnest.dev/](https://collabnest.dev/) > app.log 2>&1 &
 
 ## 🤝 Contributing
 
