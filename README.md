@@ -531,13 +531,17 @@ The database consists of **19 tables** with **4 custom enum types**, managed by 
 ---
 
 ### Production Execution (EC2)
+
 To run the backend in a production environment with environment variables:
+
 ```bash
 nohup java -jar target/collabnest-backend-0.0.1-SNAPSHOT.jar \
   --server.forward-headers-strategy=FRAMEWORK \
   --spring.datasource.url=${DB_URL} \
   --GOOGLE_CLIENT_ID=${GOOGLE_ID} \
-  --OAUTH2_REDIRECT_URI=[https://collabnest.dev/](https://collabnest.dev/) > app.log 2>&1 &
+  --OAUTH2_REDIRECT_URI=https://collabnest.dev/ \
+  > app.log 2>&1 &
+```
 
 ## 🤝 Contributing
 
