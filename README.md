@@ -13,6 +13,9 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 **CollabNest** unifies task management, Kanban boards, real-time messaging, document collaboration, and file sharing into a single role-based workspace — so your team can stop context-switching and start shipping.
+--- 
+**[Live Demo:](https://collabnest.dev)** : 
+</div>
 
 [Features](#-features) · [Tech Stack](#-tech-stack) · [Getting Started](#-getting-started) · [Architecture](#-architecture) · [API Reference](#-api-reference) · [Contributing](#-contributing) · [License](#-license)
 
@@ -163,6 +166,18 @@
 │            Schema managed by Flyway (16 migrations)         │
 └─────────────────────────────────────────────────────────────┘
 ```
+---
+
+## 🌐 Deployment
+
+CollabNest is architected for high availability and security using AWS cloud infrastructure.
+
+- **Frontend:** Hosted on **AWS Amplify** with automated CI/CD from the `main` branch.
+- **Backend API:** Deployed on an **AWS EC2** instance (Ubuntu) using a **Spring Boot** executable JAR.
+- **Reverse Proxy:** **Nginx** is configured as a reverse proxy with **SSL/TLS encryption** via Let's Encrypt.
+- **Database:** **AWS RDS (PostgreSQL)** provides a managed, scalable relational database.
+- **Domain:** Custom domain managed via **Name.com** with specialized DNS routing for the API (`api.collabnest.dev`).
+
 
 ---
 
@@ -308,7 +323,10 @@ CollabNest/
 
 ## 📡 API Reference
 
-All API endpoints are served from `http://localhost:8080`. Authentication is required for most endpoints via `Authorization: Bearer <JWT>` header.
+The production API is served from **`https://api.collabnest.dev`**. 
+For local development, the API is served from `http://localhost:8080`. 
+
+Authentication is required for most endpoints via `Authorization: Bearer <JWT>` header.
 
 ### Authentication
 
@@ -490,6 +508,15 @@ The database consists of **19 tables** with **4 custom enum types**, managed by 
 </details>
 
 ---
+
+### Production Execution (EC2)
+To run the backend in a production environment with environment variables:
+```bash
+nohup java -jar target/collabnest-backend-0.0.1-SNAPSHOT.jar \
+  --server.forward-headers-strategy=FRAMEWORK \
+  --spring.datasource.url=${DB_URL} \
+  --GOOGLE_CLIENT_ID=${GOOGLE_ID} \
+  --OAUTH2_REDIRECT_URI=[https://collabnest.dev/](https://collabnest.dev/) > app.log 2>&1 &
 
 ## 🤝 Contributing
 
