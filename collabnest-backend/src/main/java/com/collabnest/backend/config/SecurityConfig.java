@@ -139,11 +139,12 @@ public class SecurityConfig {
                 CorsConfiguration configuration = new CorsConfiguration();
 
                 // Explicitly list your new domain and localhost for development
-                configuration.setAllowedOrigins(List.of(
-                        "http://localhost:3000",
-                        "https://collabnest.dev",
-                        "https://www.collabnest.dev"
-                ));
+                configuration.setAllowedOriginPatterns(List.of(
+                                "http://localhost:3000",
+                                "http://localhost:8080",
+                                "https://*.amplifyapp.com",
+                                "https://collabnest.dev",
+                                "https://www.collabnest.dev"));
 
                 configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
                 configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Requested-With", "Accept"));
