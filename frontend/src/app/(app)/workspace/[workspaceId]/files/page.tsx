@@ -10,7 +10,6 @@ import {
   Card,
   EmptyState,
   Skeleton,
-  Badge,
 } from "@/components/ui";
 import type { FileResponse } from "@/lib/types";
 import {
@@ -18,9 +17,9 @@ import {
   FileText,
   Image as ImageIcon,
   File,
-  Download,
   Trash2,
   ExternalLink,
+  Upload,
 } from "lucide-react";
 
 function formatFileSize(bytes: number): string {
@@ -42,6 +41,8 @@ export default function FilesPage() {
   const params = useParams();
   const workspaceId = params.workspaceId as string;
   const queryClient = useQueryClient();
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const [uploadError, setUploadError] = React.useState<string | null>(null);
 
   const { data: files, isLoading } = useQuery({
     queryKey: ["files", workspaceId],
@@ -56,6 +57,29 @@ export default function FilesPage() {
     },
   });
 
+  const uploadMutation = useMutation({
+    mutationFn: (file: File) => api.files.uploadBinary(workspaceId, file),
+    onSuccess: () => {
+      setUploadError(null);
+      queryClient.invalidateQueries({ queryKey: ["files", workspaceId] });
+    },
+    onError: (error: Error) => {
+      setUploadError(error.message || "Failed to upload file");
+    },
+  });
+
+  const downloadMutation = useMutation({
+    mutationFn: ({ fileId, fileName }: { fileId: string; fileName: string }) =>
+      api.files.download(workspaceId, fileId, fileName),
+  });
+
+  const handleSelectFile = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = event.target.files?.[0];
+    if (!selectedFile) return;
+    uploadMutation.mutate(selectedFile);
+    event.target.value = "";
+  };
+
   return (
     <div className="max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-6">
@@ -65,7 +89,27 @@ export default function FilesPage() {
             {files?.length || 0} files in this workspace
           </p>
         </div>
+        <>
+          <input
+            ref={fileInputRef}
+            type="file"
+            className="hidden"
+            onChange={handleSelectFile}
+          />
+          <Button
+            variant="primary"
+            loading={uploadMutation.isPending}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <Upload className="h-4 w-4" />
+            Upload File
+          </Button>
+        </>
       </div>
+
+      {uploadError && (
+        <p className="mb-4 text-sm text-red-600">{uploadError}</p>
+      )}
 
       {isLoading ? (
         <div className="space-y-2">
@@ -108,14 +152,12 @@ export default function FilesPage() {
                 </div>
               </div>
               <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <a
-                  href={file.fileUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <button
+                  onClick={() => downloadMutation.mutate({ fileId: file.id, fileName: file.fileName })}
                   className="p-2 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
                 >
                   <ExternalLink className="h-4 w-4" />
-                </a>
+                </button>
                 <button
                   onClick={() => {
                     if (confirm("Delete this file?"))

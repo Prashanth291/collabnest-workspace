@@ -1,4 +1,4 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+export const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
 class ApiError extends Error {
   status: number;
@@ -74,6 +74,13 @@ function post<T>(path: string, body?: unknown) {
   });
 }
 
+function postForm<T>(path: string, formData: FormData) {
+  return request<T>(path, {
+    method: "POST",
+    body: formData,
+  });
+}
+
 function put<T>(path: string, body?: unknown) {
   return request<T>(path, {
     method: "PUT",
@@ -83,6 +90,33 @@ function put<T>(path: string, body?: unknown) {
 
 function del<T>(path: string) {
   return request<T>(path, { method: "DELETE" });
+}
+
+async function download(path: string): Promise<Blob> {
+  const token = getToken();
+  const headers: Record<string, string> = {};
+
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: "GET",
+    headers,
+  });
+
+  if (!res.ok) {
+    let message = `Request failed with status ${res.status}`;
+    try {
+      const err = await res.json();
+      message = err.message || err.error || message;
+    } catch {
+      // ignore parse errors
+    }
+    throw new ApiError(message, res.status);
+  }
+
+  return res.blob();
 }
 
 // ─── Auth ────────────────────────────────────────────────────
@@ -338,8 +372,35 @@ export const api = {
         `/api/workspaces/${workspaceId}/files?${query.toString()}`
       );
     },
+    uploadBinary: (
+      workspaceId: string,
+      file: File,
+      params?: { taskId?: string; documentId?: string }
+    ) => {
+      const formData = new FormData();
+      formData.append("file", file);
+      if (params?.taskId) formData.append("taskId", params.taskId);
+      if (params?.documentId) formData.append("documentId", params.documentId);
+      return postForm<FileResponse>(
+        `/api/workspaces/${workspaceId}/files/upload`,
+        formData
+      );
+    },
     delete: (workspaceId: string, fileId: string) =>
       del<void>(`/api/workspaces/${workspaceId}/files/${fileId}`),
+    download: async (workspaceId: string, fileId: string, fileName?: string) => {
+      const blob = await download(
+        `/api/workspaces/${workspaceId}/files/${fileId}/download`
+      );
+      const objectUrl = window.URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = objectUrl;
+      anchor.download = fileName || fileId;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.URL.revokeObjectURL(objectUrl);
+    },
   },
 
   // Notifications
